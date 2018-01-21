@@ -1,5 +1,6 @@
 %% -------------------------------------------------------------------
 %%
+%% Copyright (c) 2018 Rebar3Riak Contributors
 %% Copyright (c) 2016-2017 Basho Technologies, Inc.
 %%
 %% This file is provided to you under the Apache License,
@@ -18,7 +19,7 @@
 %%
 %% -------------------------------------------------------------------
 
--module(brt_io).
+-module(rrp_io).
 
 % API
 -export([
@@ -41,9 +42,9 @@
     other_cpy_info/0
 ]).
 
--include("brt.hrl").
+-include("rrp.hrl").
 
--type basho_cpy_info()  ::  {basho, brt:basho_year()}.
+-type basho_cpy_info()  ::  {basho, rrp:basho_year()}.
 -type comment_type()    ::  erl | sh.
 -type copyright_head()  ::  [string()]. % lines
 -type copyright_info()  ::  none | basho_cpy_info() | other_cpy_info().
@@ -76,18 +77,18 @@
 % Created/cached/returned by regexes/1.
 -record(regexes, {
     type        ::  comment_type(),
-    blank       ::  brt:regex(),    % whitespace-only line
-    cmt_any     ::  brt:regex(),    % any comment line
-    cmt_empty   ::  brt:regex(),    % whitespace-only comment line
-    cpy_any     ::  brt:regex(),    % any copyright comment line
-    cpy_basho   ::  brt:regex()     % Basho copyright comment line
+    blank       ::  rrp:regex(),    % whitespace-only line
+    cmt_any     ::  rrp:regex(),    % any comment line
+    cmt_empty   ::  rrp:regex(),    % whitespace-only comment line
+    cpy_any     ::  rrp:regex(),    % any copyright comment line
+    cpy_basho   ::  rrp:regex()     % Basho copyright comment line
 }).
 
 %% ===================================================================
 %% Guards
 %% ===================================================================
 
-% Section's value can only be a list of brt:dep_spec().
+% Section's value can only be a list of rrp:dep_spec().
 -define(is_deps_sect(Key),
     Key =:= deps orelse Key =:= plugins
 ).
@@ -128,8 +129,8 @@
 %% API
 %% ===================================================================
 
--spec copyright_info(File :: brt:fs_path(), Type :: comment_type())
-        ->  copyright_info() | brt:err_result().
+-spec copyright_info(File :: rrp:fs_path(), Type :: comment_type())
+        ->  copyright_info() | rrp:err_result().
 %%
 %% @doc Retrieves info from a file's copyright header.
 %%
@@ -254,16 +255,16 @@ indent(Level) ->
 %% @doc Writes some basic info about the application's configuration.
 %%
 write_info(IoDev) ->
-    case brt_config:config_file() of
+    case rrp_config:config_file() of
         undefined ->
             io:put_chars(IoDev, "No config file loaded.\n");
         File ->
             io:format(IoDev, "Config File: ~s\n", [File])
     end,
-    io:format(IoDev, "Config:\n   ~p\n", [brt_config:config()]),
+    io:format(IoDev, "Config:\n   ~p\n", [rrp_config:config()]),
     case lists:filter(
-            fun brt:implements_behaviour/1,
-            brt:list_modules(?PRV_MOD_PREFIX)) of
+            fun rrp:implements_behaviour/1,
+            rrp:list_modules(?PRV_MOD_PREFIX)) of
         [] ->
             io:put_chars(IoDev, "No providers found.\n");
         Provs ->
@@ -279,7 +280,7 @@ write_info(IoDev) ->
 -spec write_rebar_config(
         IoDev   :: io:device(),
         Terms   :: [{atom(), term()}],
-        CpyInfo :: brt:basho_year() | iolist() )
+        CpyInfo :: rrp:basho_year() | iolist() )
         -> ok.
 %%
 %% @doc Writes the specified Terms as a standard rebar.config file.
@@ -291,13 +292,13 @@ write_rebar_config(IoDev, Terms, Header) when erlang:is_list(Header) ->
 
 write_rebar_config(IoDev, Terms, StartYear) ->
     write_rebar_config(IoDev, Terms, [
-        brt_defaults:editor_erlang(),
-        brt_defaults:copyright("%%", StartYear) ]).
+        rrp_defaults:editor_erlang(),
+        rrp_defaults:copyright("%%", StartYear) ]).
 
 -spec write_deps(
         IoDev   :: io:device(),
         Level   :: non_neg_integer() | iolist(),
-        Deps    :: [brt:app_name() | brt:dep_spec()])
+        Deps    :: [rrp:app_name() | rrp:dep_spec()])
         -> ok.
 %%
 %% @doc Writes a list of dependency specifications in standard format.
@@ -401,14 +402,14 @@ format_value(_Indent, Value) when erlang:is_atom(Value) ->
 format_value(_Indent, Value) ->
     io_lib:format("~w", [Value]).
 
--spec order_rebar_config_terms(Terms :: brt:rebar_conf()) -> brt:rebar_conf().
+-spec order_rebar_config_terms(Terms :: rrp:rebar_conf()) -> rrp:rebar_conf().
 order_rebar_config_terms(Terms) ->
     %
     % Order of terms (sections) in the rebar.config file.
     % Anything not specified is sorted in the 'everything else' space.
     %
     Order = [
-        {head,  brt_protect},
+        {head,  rrp_protect},
         {head,  minimum_otp_vsn},
         {head,  erl_first_files},
         % everything else, sorted
@@ -420,18 +421,18 @@ order_rebar_config_terms(Terms) ->
         {tail,  provider_hooks},
         {tail,  deps},
         {tail,  profiles},
-        {tail,  brt},
-        {tail,  brt_upstream},
+        {tail,  rrp},
+        {tail,  rrp_upstream},
         {tail,  plugins}
     ],
     order_rebar_config_terms(lists:reverse(Order), [], Terms, []).
 
 -spec order_rebar_config_terms(
-        Keys    :: [{head | tail, brt:rebar_key()}],
-        Head    :: brt:rebar_conf(),
-        Remain  :: brt:rebar_conf(),
-        Tail    :: brt:rebar_conf())
-        -> brt:rebar_conf().
+        Keys    :: [{head | tail, rrp:rebar_key()}],
+        Head    :: rrp:rebar_conf(),
+        Remain  :: rrp:rebar_conf(),
+        Tail    :: rrp:rebar_conf())
+        -> rrp:rebar_conf().
 order_rebar_config_terms([{Where, Key} | Keys], Head, Remain, Tail) ->
     case lists:keytake(Key, 1, Remain) of
         {value, Term, Rest} ->
@@ -456,13 +457,13 @@ comment_line_start_re(Type)
         when Type == sh orelse Type == mk orelse Type == conf ->
     {sh, "^\\s*#"};
 comment_line_start_re([$. | Ext]) ->
-    comment_line_start_re(brt:to_atom(Ext));
+    comment_line_start_re(rrp:to_atom(Ext));
 comment_line_start_re(Arg) ->
     erlang:error(badarg, [Arg]).
 
 -spec parse_copyright(
         IoDev :: io:device(), ReInfo :: {comment_type(), string()})
-        ->  copyright_info() | brt:err_result().
+        ->  copyright_info() | rrp:err_result().
 %
 % Results as specified for copyright_info/2.
 % This function is tightly integrated with parse_copyright_line/3.
@@ -496,7 +497,7 @@ parse_copyright(IoDev, ReInfo) ->
         RegEx   :: #regexes{},
         Status  :: none | other | basho_cpy_info(),
         State   :: #cpystate{} )
-        ->  copyright_info() | brt:err_result().
+        ->  copyright_info() | rrp:err_result().
 %
 % Results as specified for copyright_info/2 EXCEPT that {`other', Lines}
 % requires the fixup performed by parse_copyright/2, which should be the only
@@ -527,7 +528,7 @@ parse_copyright_line(RegEx, Status,
         RegEx   :: #regexes{},
         Status  :: none | other | basho_cpy_info(),
         State   :: #cpystate{} )
-        ->  copyright_info() | brt:err_result().
+        ->  copyright_info() | rrp:err_result().
 %
 % Basically a mini state machine for handling each line.
 % Mutually recursive with, and tightly coupled to, parse_copyright_line/3.
@@ -628,7 +629,7 @@ regexes({CT, CLS}) ->
 -undef(RE_BASHO_CPY_YEAR).
 
 -spec write_rebar_config_terms(
-        IoDev :: io:device(), Indent :: iolist(), Terms :: brt:rebar_conf())
+        IoDev :: io:device(), Indent :: iolist(), Terms :: rrp:rebar_conf())
         -> ok.
 
 % Terms that are omitted if their value is an empty list.
@@ -678,7 +679,7 @@ write_rebar_config_terms(IoDev, Indent, [{Section, Profiles} | Terms])
     %
     % No profiles support before Rebar3.
     %
-    case brt_rebar:config_format() >= 3 of
+    case rrp_rebar:config_format() >= 3 of
         true ->
             io:format(IoDev, "~s{~p, [\n", [Indent, Section]),
             write_profiles(IoDev, inc_indent(Indent), Profiles),
@@ -699,10 +700,10 @@ write_rebar_config_terms(_IoDev, _Indent, []) ->
 -spec write_deps(
         IoDev   :: io:device(),
         Indent  :: iolist(), SubIndent :: iolist(),
-        Deps    :: [brt:app_name() | brt:dep_spec()])
+        Deps    :: [rrp:app_name() | rrp:dep_spec()])
         -> ok.
 write_deps(IoDev, Indent, SubIndent, [Dep | Deps]) ->
-    io:put_chars(IoDev, [Indent, brt_rebar:format_dep(SubIndent, Dep)]),
+    io:put_chars(IoDev, [Indent, rrp_rebar:format_dep(SubIndent, Dep)]),
     close_term(IoDev, Indent, Deps),
     write_deps(IoDev, Indent, SubIndent, Deps);
 write_deps(_IoDev, _Indent, _SubIndent, []) ->
@@ -721,7 +722,7 @@ write_overrides(_IoDev, _Indent, []) ->
 -spec write_profiles(
         IoDev   :: io:device(),
         Indent  :: iolist(),
-        Profiles :: [{brt:rebar_key(), brt:rebar_conf()}])
+        Profiles :: [{rrp:rebar_key(), rrp:rebar_conf()}])
         -> ok.
 write_profiles(IoDev, Indent, [{Name, Terms} | Profiles]) ->
     io:format(IoDev, "~s{~p, [\n", [Indent, Name]),

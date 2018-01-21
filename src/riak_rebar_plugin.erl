@@ -1,5 +1,6 @@
 %% -------------------------------------------------------------------
 %%
+%% Copyright (c) 2018 Rebar3Riak Contributors
 %% Copyright (c) 2016-2017 Basho Technologies, Inc.
 %%
 %% This file is provided to you under the Apache License,
@@ -18,19 +19,19 @@
 %%
 %% -------------------------------------------------------------------
 
--module(basho_rebar_tools).
+-module(riak_rebar_plugin).
 %
 % For efficiency in production use, we don't have a dependency on rebar
 % itself, so the behaviors this module implements aren't always visible.
 %
--ifdef(BRT_CHECK).
+-ifdef(RRP_CHECK).
 -behaviour(provider).
 -endif.
 
 %% provider behavior
 -export([do/1, format_error/1, init/1]).
 
--include("brt.hrl").
+-include("rrp.hrl").
 
 % This is the version that contains the profile precedence fix.
 -define(REBAR_MIN_VSN,  [3, 3, 3]).
@@ -61,7 +62,7 @@
 %% provider API
 %%====================================================================
 
--spec init(State :: brt:rebar_state()) -> {ok, brt:rebar_state()}.
+-spec init(State :: rrp:rebar_state()) -> {ok, rrp:rebar_state()}.
 %%
 %% @doc Initializes State with the plugin's command providers.
 %%
@@ -75,15 +76,15 @@ init(StateIn) ->
             {ok, State} = init_prov_env(Mods, StateIn),
             % There's no application at this point, so don't try to
             % get its directory - it will be `undefined'.
-            case brt_config:init([rebar_state:dir(State)]) of
+            case rrp_config:init([rebar_state:dir(State)]) of
                 ok ->
-                    {ok, install_providers(Mods, brt_inject_state:inject(State))};
+                    {ok, install_providers(Mods, rrp_inject_state:inject(State))};
                 {error, What} ->
                     erlang:error(What)
             end
     end.
 
--spec do(State :: brt:rebar_state()) -> {ok, brt:rebar_state()}.
+-spec do(State :: rrp:rebar_state()) -> {ok, rrp:rebar_state()}.
 %%
 %% @doc Placeholder to fill out the `provider' API, should never be called.
 %%
@@ -99,7 +100,7 @@ do(State) ->
 %% This provider performs no actions itself.
 %%
 format_error(Error) ->
-    brt:format_error(Error).
+    rrp:format_error(Error).
 
 %%====================================================================
 %% Internal
@@ -111,33 +112,33 @@ format_error(Error) ->
 %
 check_rebar_version() ->
     {ok, RebarVsnStr} = application:get_key(rebar, vsn),
-    RebarVsn = brt:parse_version(RebarVsnStr),
-    case brt:is_min_version(?REBAR_MIN_VSN, RebarVsn) of
+    RebarVsn = rrp:parse_version(RebarVsnStr),
+    case rrp:is_min_version(?REBAR_MIN_VSN, RebarVsn) of
         true ->
             ok;
         _ ->
             VsnStr = case RebarVsn of
                 [N | _] when erlang:is_integer(N) ->
-                    brt:version_string(RebarVsn);
+                    rrp:version_string(RebarVsn);
                 _ ->
                     RebarVsnStr
             end,
             ?LOG_WARN(
                 "Using Rebar ~s may not work properly."
                 " Upgrade to ~s or higher.",
-                [VsnStr, brt:version_string(?REBAR_MIN_VSN)])
+                [VsnStr, rrp:version_string(?REBAR_MIN_VSN)])
     end.
 
 -spec command_mod_spec(Cmd :: atom() | string(), Mods :: prv_mods())
-        -> {atom(), module(), brt:prv_spec()} | false.
+        -> {atom(), module(), rrp:prv_spec()} | false.
 %
 % Find the module and provider spec for the specified command.
 %
 command_mod_spec(Cmd, Mods) when not erlang:is_atom(Cmd) ->
-    command_mod_spec(brt:to_atom(Cmd), Mods);
+    command_mod_spec(rrp:to_atom(Cmd), Mods);
 command_mod_spec(Cmd, [Mod | Mods]) ->
     Spec = Mod:spec(),
-    case brt:get_key_value(name, Spec) of
+    case rrp:get_key_value(name, Spec) of
         Cmd ->
             {Cmd, Mod, Spec};
         _ ->
@@ -146,8 +147,8 @@ command_mod_spec(Cmd, [Mod | Mods]) ->
 command_mod_spec(_, []) ->
     false.
 
--spec init_prov_env(Mods :: prv_mods(), State :: brt:rebar_state())
-        -> {ok, brt:rebar_state()}.
+-spec init_prov_env(Mods :: prv_mods(), State :: rrp:rebar_state())
+        -> {ok, rrp:rebar_state()}.
 %
 % If one of our commands has been invoked:
 % - Check the Rebar version.
@@ -176,8 +177,8 @@ init_prov_env(Mods, State) ->
             {ok, State}
     end.
 
--spec install_providers(Modules :: prv_mods(), State :: brt:rebar_state())
-        -> brt:rebar_state().
+-spec install_providers(Modules :: prv_mods(), State :: rrp:rebar_state())
+        -> rrp:rebar_state().
 %
 % Initialize uninstalled command providers.
 %
@@ -187,23 +188,23 @@ install_providers(Modules, State) ->
     NextState = ?PRV_SET_MOD:fold(fun install_provider/2, State, ToInstall),
     installed_providers(NextState, ?PRV_SET_MOD:union(Installed, ToInstall)).
 
--spec install_provider(Module :: module(), State :: brt:rebar_state())
-        -> brt:rebar_state().
+-spec install_provider(Module :: module(), State :: rrp:rebar_state())
+        -> rrp:rebar_state().
 %
 % Initialize one command provider.
 %
 install_provider(Module, State) ->
     rebar_state:add_provider(State, providers:create(Module:spec())).
 
--spec installed_providers(State :: brt:rebar_state()) -> prv_mods().
+-spec installed_providers(State :: rrp:rebar_state()) -> prv_mods().
 %
 % Returns the list of our providers currently installed in State.
 %
 installed_providers(State) ->
     rebar_state:get(State, ?INSTALLED_PROVIDERS_KEY, []).
 
--spec installed_providers(State :: brt:rebar_state(), Modules :: prv_mods())
-        -> brt:rebar_state().
+-spec installed_providers(State :: rrp:rebar_state(), Modules :: prv_mods())
+        -> rrp:rebar_state().
 %
 % Updates the list of our providers currently installed in State.
 %
@@ -211,15 +212,15 @@ installed_providers(State, Modules) ->
     rebar_state:set(State, ?INSTALLED_PROVIDERS_KEY, Modules).
 
 -spec maybe_adjust_log_level(
-    Spec :: brt:prv_spec(), Args :: [string()], Caller :: atom()) -> ok.
+    Spec :: rrp:prv_spec(), Args :: [string()], Caller :: atom()) -> ok.
 %
-% If the `quiet' command line switch was given to a BRT command ensure the
+% If the `quiet' command line switch was given to a RRP command ensure the
 % log level is no higher than `error'.
-% If the `warn' command line switch was given to a BRT command ensure the
+% If the `warn' command line switch was given to a RRP command ensure the
 % log level is no higher than `warn'.
 %
 maybe_adjust_log_level(Spec, Args, Caller) ->
-    case getopt:parse(brt:get_key_list(opts, Spec), Args) of
+    case getopt:parse(rrp:get_key_list(opts, Spec), Args) of
         {ok, {Opts, _}} ->
             CurLevel = rebar_log:get_level(),
             MaxLevel = case proplists:get_value(quiet, Opts, false) of
@@ -244,12 +245,12 @@ maybe_adjust_log_level(Spec, Args, Caller) ->
             ok
     end.
 
--spec provider_modules(State :: brt:rebar_state()) -> prv_mods().
+-spec provider_modules(State :: rrp:rebar_state()) -> prv_mods().
 %
 % Return the list of modules in this application implementing command
 % providers.
 %
 provider_modules(_State) ->
     ?PRV_SET_MOD:from_list(lists:filter(
-        fun brt:implements_behaviour/1,
-        brt:list_modules(?PRV_MOD_PREFIX))).
+        fun rrp:implements_behaviour/1,
+        rrp:list_modules(?PRV_MOD_PREFIX))).

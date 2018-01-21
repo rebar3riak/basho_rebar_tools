@@ -1,5 +1,6 @@
 %% -------------------------------------------------------------------
 %%
+%% Copyright (c) 2018 Rebar3Riak Contributors
 %% Copyright (c) 2016 Basho Technologies, Inc.
 %%
 %% This file is provided to you under the Apache License,
@@ -18,7 +19,7 @@
 %%
 %% -------------------------------------------------------------------
 
--module(brt_xref).
+-module(rrp_xref).
 
 % API
 -export([
@@ -38,7 +39,7 @@
     xref/0
 ]).
 
--include("brt.hrl").
+-include("rrp.hrl").
 
 %
 % For the time being, maintain the list of added applications and their
@@ -46,16 +47,16 @@
 % This approach may change if we want to use this module for more extensive
 % analysis, which is why it's wrapped in a record in the first place.
 %
--record(brt_xref, {
+-record(rrp_xref, {
     xref        ::  pid() | atom(),
-    apps  = []  ::  [brt:app_spec()]
+    apps  = []  ::  [rrp:app_spec()]
 }).
 
--type addable() ::  brt:app_spec() | app_dir() | lib_dir().
--type app_dir() ::  brt:fs_path().
--type lib_dir() ::  {brt:fs_path()}.
+-type addable() ::  rrp:app_spec() | app_dir() | lib_dir().
+-type app_dir() ::  rrp:fs_path().
+-type lib_dir() ::  {rrp:fs_path()}.
 
-?opaque xref()  ::  #brt_xref{}.
+?opaque xref()  ::  #rrp_xref{}.
 
 -type xref_error()  ::  {error, module(), term()}.
 
@@ -64,7 +65,7 @@
 %% ===================================================================
 
 -spec add(XRef :: xref(), Adds :: addable() | [addable()])
-        -> {ok, xref()} | brt:err_result().
+        -> {ok, xref()} | rrp:err_result().
 %%
 %% @doc Adds the specified applications to the xref server.
 %%
@@ -82,12 +83,12 @@
 %%  `AppDir'
 %%      An application directory.
 %%
-add(#brt_xref{xref = X, apps = Apps} = XRef, [{Name, _, Path} = App | Adds]) ->
-    case not lists:keymember(Name, 1, Apps) andalso brt:is_app_dir(Path) of
+add(#rrp_xref{xref = X, apps = Apps} = XRef, [{Name, _, Path} = App | Adds]) ->
+    case not lists:keymember(Name, 1, Apps) andalso rrp:is_app_dir(Path) of
         true ->
             case xref:add_application(X, Path, [{name, Name}]) of
                 {ok, _} ->
-                    add(XRef#brt_xref{apps = [App | Apps]}, Adds);
+                    add(XRef#rrp_xref{apps = [App | Apps]}, Adds);
                 XRefErr ->
                     xref_error(XRefErr)
             end;
@@ -106,21 +107,21 @@ add(XRef, [{LibDir} | Adds]) ->
                     Paths = [filename:join(LibDir, Sub) || Sub <- Subs],
                     add(XRef, Paths ++ Adds);
                 {error, What} ->
-                    brt:file_error(LibDir, What)
+                    rrp:file_error(LibDir, What)
             end;
         _ ->
             add(XRef, Adds)
     end;
-add(#brt_xref{xref = X, apps = Apps} = XRef, [Path | Adds]) ->
-    case brt:is_app_dir(Path) of
+add(#rrp_xref{xref = X, apps = Apps} = XRef, [Path | Adds]) ->
+    case rrp:is_app_dir(Path) of
         true ->
-            Name = brt:app_dir_to_name(Path),
+            Name = rrp:app_dir_to_name(Path),
             case lists:keymember(Name, 1, Apps) of
                 false ->
                     case xref:add_application(X, Path, [{name, Name}]) of
                         {ok, _} ->
                             App = {Name, Path, Path},
-                            add(XRef#brt_xref{apps = [App | Apps]}, Adds);
+                            add(XRef#rrp_xref{apps = [App | Apps]}, Adds);
                         XRefErr ->
                             xref_error(XRefErr)
                     end;
@@ -135,24 +136,24 @@ add(XRef, []) ->
 add(XRef, Addable) ->
     add(XRef, [Addable]).
 
--spec app(XRef :: xref(), AppName :: brt:app_name())
-        -> brt:app_spec() | false.
+-spec app(XRef :: xref(), AppName :: rrp:app_name())
+        -> rrp:app_spec() | false.
 %%
 %% @doc Returns the name/path tuple for the specified application, if found.
 %%
 %% Returns `false' if the application has not been added to the xref server.
 %%
-app(#brt_xref{apps = Apps}, AppName) ->
-    lists:keyfind(brt:to_atom(AppName), 1, Apps).
+app(#rrp_xref{apps = Apps}, AppName) ->
+    lists:keyfind(rrp:to_atom(AppName), 1, Apps).
 
--spec app_deps(XRef :: xref(), Apps :: brt:app_name() | [brt:app_name()])
-        -> {ok, [brt:app_name()]} | brt:err_result().
+-spec app_deps(XRef :: xref(), Apps :: rrp:app_name() | [rrp:app_name()])
+        -> {ok, [rrp:app_name()]} | rrp:err_result().
 %%
 %% @doc Returns all of the applications called by any of the input Apps.
 %%
 %% Note that the result is not filtered, so it normally includes the input Apps.
 %%
-app_deps(#brt_xref{xref = X}, Apps) when erlang:is_list(Apps) ->
+app_deps(#rrp_xref{xref = X}, Apps) when erlang:is_list(Apps) ->
     case xref:analyze(X, {application_call, Apps}) of
         {ok, _} = Ret ->
             Ret;
@@ -162,14 +163,14 @@ app_deps(#brt_xref{xref = X}, Apps) when erlang:is_list(Apps) ->
 app_deps(XRef, App) ->
     app_deps(XRef, [App]).
 
--spec dep_apps(XRef :: xref(), Apps :: brt:app_name() | [brt:app_name()])
-        -> {ok, [brt:app_name()]} | brt:err_result().
+-spec dep_apps(XRef :: xref(), Apps :: rrp:app_name() | [rrp:app_name()])
+        -> {ok, [rrp:app_name()]} | rrp:err_result().
 %%
 %% @doc Returns all of the applications that call any of the input Apps.
 %%
 %% Note that the result is not filtered, so it normally includes the input Apps.
 %%
-dep_apps(#brt_xref{xref = X}, Apps) when erlang:is_list(Apps) ->
+dep_apps(#rrp_xref{xref = X}, Apps) when erlang:is_list(Apps) ->
     case xref:analyze(X, {application_use, Apps}) of
         {ok, _} = Ret ->
             Ret;
@@ -179,20 +180,20 @@ dep_apps(#brt_xref{xref = X}, Apps) when erlang:is_list(Apps) ->
 dep_apps(XRef, App) ->
     dep_apps(XRef, [App]).
 
--spec new() -> {ok, xref()} | brt:err_result().
+-spec new() -> {ok, xref()} | rrp:err_result().
 %%
 %% @doc Starts an empty XRef server.
 %%
 new() ->
     case xref:start([{xref_mode, modules}]) of
         {ok, Pid} ->
-            {ok, #brt_xref{xref = Pid}};
+            {ok, #rrp_xref{xref = Pid}};
         _ ->
-            {error, {brt, xref_start_failed}}
+            {error, {rrp, xref_start_failed}}
     end.
 
--spec new(StateOrApps :: brt:rebar_state() | addable() | [addable()])
-        -> {ok, xref()} | brt:err_result().
+-spec new(StateOrApps :: rrp:rebar_state() | addable() | [addable()])
+        -> {ok, xref()} | rrp:err_result().
 %%
 %% @doc Starts an XRef server and loads it from the provided input.
 %%
@@ -202,10 +203,10 @@ new() ->
 %% Providing an empty input list is equivalent to {@link new/0}.
 %%
 new(State) when ?is_rebar_state(State) ->
-    case brt_rebar:apps_deps_dirs(State) of
+    case rrp_rebar:apps_deps_dirs(State) of
         {ok, AppSpecs, DepsDirs} ->
             new(lists:append([
-                AppSpecs, brt_rebar:dep_app_specs(State), [{D} || D <- DepsDirs]
+                AppSpecs, rrp_rebar:dep_app_specs(State), [{D} || D <- DepsDirs]
             ]));
         Error ->
             Error
@@ -227,7 +228,7 @@ new(Dirs) ->
 %% In this short-running context there's little need for this, as multiple
 %% analyses can be done on a single instance.
 %%
-stop(#brt_xref{xref = X}) ->
+stop(#rrp_xref{xref = X}) ->
     catch xref:stop(X),
     ok.
 

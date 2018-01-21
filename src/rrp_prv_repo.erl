@@ -1,5 +1,6 @@
 %% -------------------------------------------------------------------
 %%
+%% Copyright (c) 2018 Rebar3Riak Contributors
 %% Copyright (c) 2016-2017 Basho Technologies, Inc.
 %%
 %% This file is provided to you under the Apache License,
@@ -19,17 +20,17 @@
 %% -------------------------------------------------------------------
 
 %%
-%% @doc BRT provider for the `brt-repo' command.
+%% @doc RRP provider for the `rrp-repo' command.
 %%
--module(brt_prv_repo).
+-module(rrp_prv_repo).
 
 %% provider behavior
--ifndef(BRT_VALIDATE).
--behaviour(brt).
+-ifndef(RRP_VALIDATE).
+-behaviour(rrp).
 -endif.
 -export([do/1, format_error/1, spec/0]).
 
--include("brt.hrl").
+-include("rrp.hrl").
 
 %
 % Thoughts on what you should be able to do:
@@ -44,8 +45,8 @@
 %   commits and pushes have some scary aspects to them.
 %
 
--define(PROVIDER_ATOM,  'brt-repo').
--define(PROVIDER_STR,   "brt-repo").
+-define(PROVIDER_ATOM,  'rrp-repo').
+-define(PROVIDER_STR,   "rrp-repo").
 -define(PROVIDER_DEPS,  [lock]).
 -define(PROVIDER_OPTS,  [
 %%    {ahead, $a, "ahead", boolean,
@@ -62,14 +63,14 @@
         "Where available, display command output."},
     {short, $s, "short", boolean,
         "List only repository names/paths, as appropriate [default]."},
-    ?BRT_VERBOSITY_OPTS
+    ?RRP_VERBOSITY_OPTS
 ]).
 
 %% ===================================================================
 %% Behavior
 %% ===================================================================
 
--spec do(State :: brt:rebar_state()) -> {ok, brt:rebar_state()}.
+-spec do(State :: rrp:rebar_state()) -> {ok, rrp:rebar_state()}.
 %%
 %% @doc Display provider information.
 %%
@@ -82,7 +83,7 @@ do(State) ->
 %% @doc Placeholder to fill out the `provider' API, should never be called.
 %%
 format_error(Error) ->
-    brt:format_error(Error).
+    rrp:format_error(Error).
 
 -spec spec() -> [{atom(), term()}].
 %%
@@ -130,16 +131,16 @@ long_desc() ->
 -type context() ::  {boolean(), boolean()}.
 
 -spec handle_command(
-    Opts :: [proplists:property()], State :: brt:rebar_state())
-        -> {ok, brt:rebar_state()} | brt:prv_error().
+    Opts :: [proplists:property()], State :: rrp:rebar_state())
+        -> {ok, rrp:rebar_state()} | rrp:prv_error().
 handle_command(Opts, State) ->
     InitCtx = {proplists:get_value(long, Opts, false), true},
-    Select  = fun brt_rebar:in_prj_or_checkouts/2,
+    Select  = fun rrp_rebar:in_prj_or_checkouts/2,
     case fold_func(Opts, InitCtx) of
         {error, _} = Error ->
             Error;
         {Func, Ctx} ->
-            case brt_rebar:fold(Select, Func, Ctx, State) of
+            case rrp_rebar:fold(Select, Func, Ctx, State) of
                 {ok, {_, true}} ->
                     {ok, State};
                 {ok, _} ->
@@ -150,13 +151,13 @@ handle_command(Opts, State) ->
     end.
 
 -spec fold_func(Opts :: [proplists:property()], Context :: context())
-        -> {brt_rebar:fold_func(), context()} | brt:prv_error().
+        -> {rrp_rebar:fold_func(), context()} | rrp:prv_error().
 fold_func(Opts, Context) ->
     fold_func([version, dirty, ahead, pull], Opts, Context).
 
 -spec fold_func(
     Ops :: [atom()], Opts :: [proplists:property()], Context :: context())
-        -> {brt_rebar:fold_func(), context()} | brt:prv_error().
+        -> {rrp_rebar:fold_func(), context()} | rrp:prv_error().
 
 fold_func([ahead = Op | Ops], Opts, Context) ->
     case proplists:get_value(Op, Opts) of
@@ -189,33 +190,33 @@ fold_func([version = Op | Ops], Opts, Context) ->
 fold_func([], _Opts, _Context) ->
     {error, {?MODULE, no_operation}}.
 
--spec format_error(App :: brt:app_spec(), Error :: term()) -> brt:prv_error().
+-spec format_error(App :: rrp:app_spec(), Error :: term()) -> rrp:prv_error().
 %
 % For use by the fold functions to generate appropriate results, primarily
 % from the detailed error results returned from git commands.
 %
 format_error({Name, _, _}, {error, {_, _, _, ErrLines}}) ->
     {error, string:join(
-        [lists:flatten(["Repository error: ", brt:to_string(Name)]) | ErrLines],
+        [lists:flatten(["Repository error: ", rrp:to_string(Name)]) | ErrLines],
         "\n")};
 format_error(_, Error) ->
     format_error(Error).
 
 -spec ahead(
-    App :: brt:app_spec(), Ctx :: context(), State :: brt:rebar_state())
-        -> {ok, context()} | brt:prv_error().
+    App :: rrp:app_spec(), Ctx :: context(), State :: rrp:rebar_state())
+        -> {ok, context()} | rrp:prv_error().
 ahead(App, {_Long, _Result} = Ctx, _State) ->
     ?LOG_DEBUG(
         "~s:~s/3: Ctx: ~p~nApp: ~p", [?MODULE, ahead, Ctx, App]),
     {error, {?MODULE, not_implemented}}.
 
 -spec dirty(
-    App :: brt:app_spec(), Ctx :: context(), State :: brt:rebar_state())
-        -> {ok, context()} | brt:prv_error().
+    App :: rrp:app_spec(), Ctx :: context(), State :: rrp:rebar_state())
+        -> {ok, context()} | rrp:prv_error().
 dirty({Name, Repo, _} = App, {Long, _} = Ctx, _State) ->
     ?LOG_DEBUG(
         "~s:~s/3: Ctx: ~p~nApp: ~p", [?MODULE, dirty, Ctx, App]),
-    case brt_repo:dirty(Repo) of
+    case rrp_repo:dirty(Repo) of
         false ->
             ?LOG_INFO("Repository clean: ~s", [Name]),
             {ok, Ctx};
@@ -234,12 +235,12 @@ dirty({Name, Repo, _} = App, {Long, _} = Ctx, _State) ->
     end.
 
 -spec pull(
-    App :: brt:app_spec(), Ctx :: context(), State :: brt:rebar_state())
-        -> {ok, context()} | brt:prv_error().
+    App :: rrp:app_spec(), Ctx :: context(), State :: rrp:rebar_state())
+        -> {ok, context()} | rrp:prv_error().
 pull({Name, Repo, _} = App, {Long, _Result} = Ctx, _State) ->
     ?LOG_DEBUG(
         "~s:~s/3: Ctx: ~p~nApp: ~p", [?MODULE, pull, Ctx, App]),
-    case brt_repo:pull(Repo) of
+    case rrp_repo:pull(Repo) of
         {ok, OutLines} ->
             case Long of
                 true ->
@@ -255,12 +256,12 @@ pull({Name, Repo, _} = App, {Long, _Result} = Ctx, _State) ->
     end.
 
 -spec version(
-    App :: brt:app_spec(), Ctx :: context(), State :: brt:rebar_state())
-        -> {ok, context()} | brt:prv_error().
+    App :: rrp:app_spec(), Ctx :: context(), State :: rrp:rebar_state())
+        -> {ok, context()} | rrp:prv_error().
 version({Name, Repo, _} = App, {Long, _} = Ctx, _State) ->
     ?LOG_DEBUG(
         "~s:~s/3: Ctx: ~p~nApp: ~p", [?MODULE, version, Ctx, App]),
-    case brt_repo:version(Repo) of
+    case rrp_repo:version(Repo) of
         {error, noversion} ->
             ?LOG_WARN("Repository ~s: No commits", [Name]),
             {ok, {Long, false}};

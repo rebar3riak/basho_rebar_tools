@@ -1,5 +1,6 @@
 %% -------------------------------------------------------------------
 %%
+%% Copyright (c) 2018 Rebar3Riak Contributors
 %% Copyright (c) 2016-2017 Basho Technologies, Inc.
 %%
 %% This file is provided to you under the Apache License,
@@ -19,26 +20,26 @@
 %% -------------------------------------------------------------------
 
 %%
-%% @doc BRT provider for the `brt-sup' command.
+%% @doc RRP provider for the `rrp-sup' command.
 %%
--module(brt_prv_sup).
+-module(rrp_prv_sup).
 
 %% provider behavior
--ifndef(BRT_VALIDATE).
--behaviour(brt).
+-ifndef(RRP_VALIDATE).
+-behaviour(rrp).
 -endif.
 -export([do/1, format_error/1, spec/0]).
 
--include("brt.hrl").
+-include("rrp.hrl").
 
--define(PROVIDER_ATOM,  'brt-sup').
--define(PROVIDER_STR,   "brt-sup").
+-define(PROVIDER_ATOM,  'rrp-sup').
+-define(PROVIDER_STR,   "rrp-sup").
 -define(PROVIDER_DEPS,  [lock]).
 -define(PROVIDER_OPTS,  [
     {gitignore, $g, "gitignore", boolean,
         "Create or overwrite .gitignore [default]."},
-    {thumbs, $t, "thumbs", boolean,
-        "Create or overwrite .thumbs.yml [default]."},
+    {travis, $t, "travis", boolean,
+        "Create or overwrite .travis.yml [default]."},
     {makefile, $m, "makefile", boolean,
         "Create or overwrite Makefile."},
     {ct, $c, "ct", boolean,
@@ -47,7 +48,7 @@
         "Generate file(s) appropriate for applications with an EScript."},
     {native, $n, "nif", boolean,
         "Generate file(s) appropriate for applications with NIF artifacts."},
-    ?BRT_VERBOSITY_OPTS
+    ?RRP_VERBOSITY_OPTS
 ]).
 
 -define(NO_ESCRIPT_WARNING,
@@ -70,23 +71,29 @@
 %% Behavior
 %% ===================================================================
 
--spec do(State :: brt:rebar_state())
-        -> {ok, brt:rebar_state()} | brt:prv_error().
+-spec do(State :: rrp:rebar_state())
+        -> {ok, rrp:rebar_state()} | rrp:prv_error().
 %%
 %% @doc Execute the provider command logic.
 %%
 do(State) ->
     {Opts, _} = rebar_state:command_parsed_args(State),
-    Tgts = [T || T <- [gitignore, thumbs, makefile],
+    Tgts = [T || T <- [gitignore, travis, makefile],
         proplists:get_value(T, Opts, false)],
     Targets = case Tgts of
         [] ->
             % defaults
-            [gitignore, thumbs];
+            [gitignore, travis];
         _ ->
             Tgts
     end,
-    Vars = native_opt_vars(escript_opt_vars([], Opts, State), Opts, State),
+    InitVars = case rrp:get_key_value(copyright_owner, rrp_config:config()) of
+        undefined ->
+            [];
+        CpyOwn ->
+            [{author_name, CpyOwn}]
+    end,
+    Vars = native_opt_vars(escript_opt_vars(InitVars, Opts, State), Opts, State),
     handle_command(Targets, Vars, Opts, State).
 
 -spec format_error(Error :: term()) -> iolist().
@@ -94,7 +101,7 @@ do(State) ->
 %% @doc Format errors for display.
 %%
 format_error(Error) ->
-    brt:format_error(Error).
+    rrp:format_error(Error).
 
 -spec spec() -> [{atom(), term()}].
 %%
@@ -131,7 +138,7 @@ long_desc() ->
     "Rebar's template capabilities - run \"rebar3 new\" for the list of "
     "templates.\n\n"
     "If no target file options are provided, the default is "
-    "--thumbs --gitignore.\n\n"
+    "--travis --gitignore.\n\n"
     "Makefiles are discouraged in Rebar3 projects; they are supported for "
     "their utility during development. "
     "If you use them, consider *not* committing them, and adding them to "
@@ -142,11 +149,11 @@ long_desc() ->
 %%====================================================================
 
 -spec handle_command(
-    Targets :: [gitignore | thumbs | makefile],
+    Targets :: [gitignore | travis | makefile],
     Vars    :: [{atom(), string()}],
     Opts    :: [proplists:property()],
-    State   :: brt:rebar_state())
-        -> {ok, brt:rebar_state()} | brt:prv_error().
+    State   :: rrp:rebar_state())
+        -> {ok, rrp:rebar_state()} | rrp:prv_error().
 
 handle_command([gitignore | Targets], VarsIn, Opts, State) ->
     FileName = ".gitignore",
@@ -174,9 +181,9 @@ handle_command([gitignore | Targets], VarsIn, Opts, State) ->
             Error
     end;
 
-handle_command([thumbs | Targets], VarsIn, Opts, State) ->
-    FileName = ".thumbs.yml",
-    TmplBase = "th",
+handle_command([travis | Targets], VarsIn, Opts, State) ->
+    FileName = ".travis.yml",
+    TmplBase = "tr",
     case prepare_file_vars(FileName, VarsIn) of
         Vars when erlang:is_list(Vars) ->
             TmplPart = case proplists:get_value(ct, Opts) of
@@ -220,14 +227,14 @@ handle_command([], _, _, State) ->
     {ok, State}.
 
 -spec prepare_file_vars(File :: string(), Vars :: [{atom(), string()}])
-        -> [{atom(), string()}] | brt:prv_error().
+        -> [{atom(), string()}] | rrp:prv_error().
 %
 % Populates template context from the target file.
 %
 prepare_file_vars(File, Vars) ->
-    case brt_io:copyright_info(File, sh) of
+    case rrp_io:copyright_info(File, sh) of
         {basho, StartYear} ->
-            case brt_defaults:current_year() of
+            case rrp_defaults:current_year() of
                 CurYear when CurYear > StartYear ->
                     Range = lists:flatten([
                         erlang:integer_to_list(StartYear), $-,
@@ -247,7 +254,7 @@ prepare_file_vars(File, Vars) ->
         {error, enoent} ->
             Vars;
         {error, What} when erlang:is_atom(What) ->
-            brt:file_error(File, What);
+            rrp:file_error(File, What);
         {error, What} ->
             {error, ?MODULE, What}
     end.
@@ -255,8 +262,8 @@ prepare_file_vars(File, Vars) ->
 -spec escript_opt_vars(
     Vars    :: [{atom(), string()}],
     Opts    :: [{atom(), term()}],
-    State   :: brt:rebar_state())
-        -> [{atom(), string()}] | brt:prv_error().
+    State   :: rrp:rebar_state())
+        -> [{atom(), string()}] | rrp:prv_error().
 %%
 %% Populates escript template context from options.
 %%
@@ -277,8 +284,8 @@ escript_opt_vars(Vars, Opts, State) ->
 -spec native_opt_vars(
     Vars    :: [{atom(), string()}],
     Opts    :: [{atom(), term()}],
-    State   :: brt:rebar_state())
-        -> [{atom(), string()}] | brt:prv_error().
+    State   :: rrp:rebar_state())
+        -> [{atom(), string()}] | rrp:prv_error().
 %%
 %% Populates NIF/port template context from options.
 %% Lower priority than escript name, so it defers to a previously set value.
@@ -294,7 +301,7 @@ native_opt_vars(Vars, Opts, State) ->
 
 -spec set_teplate_prj_app(
     Name    :: atom(),
-    State   :: brt:rebar_state(),
+    State   :: rrp:rebar_state(),
     Vars    :: [{atom(), string()}],
     Force   :: boolean(),
     Warn    :: string())
@@ -326,13 +333,13 @@ set_teplate_prj_app(Name, State, Vars, false, Warn) ->
 
 -spec set_template_var(
     Name    :: atom(),
-    Value   :: atom() | binary()| [char() | [char()]],
+    Value   :: atom() | binary() | [char() | [char()]],
     Vars    :: [{atom(), string()}],
     Force   :: boolean())
         -> [{atom(), string()}].
 
 set_template_var(Name, Value, Vars, true) ->
-    lists:keystore(Name, 1, Vars, {Name, brt:to_string(Value)});
+    lists:keystore(Name, 1, Vars, {Name, rrp:to_string(Value)});
 set_template_var(Name, Value, Vars, false) ->
     case lists:keymember(Name, 1, Vars) of
         true ->

@@ -1,5 +1,6 @@
 %% -------------------------------------------------------------------
 %%
+%% Copyright (c) 2018 Rebar3Riak Contributors
 %% Copyright (c) 2016-2017 Basho Technologies, Inc.
 %%
 %% This file is provided to you under the Apache License,
@@ -18,16 +19,16 @@
 %%
 %% -------------------------------------------------------------------
 
--ifndef(brt_included).
--define(brt_included, true).
+-ifndef(rrp_included).
+-define(rrp_included, true).
 
--define(APP_NAME_DISPLAY,   "Basho Rebar Tools").
+-define(APP_NAME_DISPLAY,   "Riak Rebar Plugin").
 
--define(APP_NAME_ATOM,      'basho_rebar_tools').
--define(APP_NAME_STRING,    "basho_rebar_tools").
+-define(APP_NAME_ATOM,      'riak_rebar_plugin').
+-define(APP_NAME_STRING,    "riak_rebar_plugin").
 
--define(PRV_MOD_PREFIX,     "brt_prv_").
--define(PRV_CMD_PREFIX,     "brt-").
+-define(PRV_MOD_PREFIX,     "rrp_prv_").
+-define(PRV_CMD_PREFIX,     "rrp-").
 
 -ifdef(EDOC).
 -define(opaque, -opaque).
@@ -70,21 +71,23 @@
 -define(is_rebar_app_info(Term), ?is_tuple_minmax(app_info_t, 17, 25, Term)).
 
 %
-% The earliest legitimate Basho copyright year.
+% The earliest and latest legitimate Basho copyright years.
 % Basho was founded in 2008, but it was in January, so there are some 2007
 % copyrights - a lot of them, actually - that are arguably ok.
+% Anything after Basho closed in 2017 is assumed to be bad.
 %
 -define(BASHO_YEAR_MIN, 2007).
+-define(BASHO_YEAR_MAX, 2017).
 
 %
 % Common provider options.
 %
--define(BRT_CHECKOUTS_OPT,
+-define(RRP_CHECKOUTS_OPT,
     {checkouts, $c, "checkouts", boolean,
         "When operating recursively (-r|--recursive), restrict operations to "
         "the current project and its checkouts directory."}
 ).
--define(BRT_LOOSE_OPT,
+-define(RRP_LOOSE_OPT,
     {loose, $l, "loose", boolean,
         "Issue a warning, instead of an error, if the input file has an "
         "ambiguous or non-Basho copyright. "
@@ -92,11 +95,11 @@
         "current-year Basho copyright (based on how ambiguous it is) and "
         "MUST be reviewed before being committed."}
 ).
--define(BRT_RECURSIVE_OPT,
+-define(RRP_RECURSIVE_OPT,
     {recurse, $r, "recurse", boolean,
         "Apply the operation to all (true) dependencies, recursively."}
 ).
--define(BRT_VERBOSITY_OPTS,
+-define(RRP_VERBOSITY_OPTS,
     {quiet, $q, "quiet", boolean,
         "Restrict output to errors, "
         "effective only after the plugin is loaded."},
@@ -113,10 +116,10 @@
 %
 % For temporary tracing ONLY!
 %
--define(BRT_VAR(Var),   io:format(
+-define(RRP_VAR(Var),   io:format(
     standard_error, "~s:~b: ~s = ~p\n", [?MODULE, ?LINE, ??Var, Var])).
 
 % Syntactic sugar.
 -define(else,   true).
 
--endif. % brt_included
+-endif. % rrp_included

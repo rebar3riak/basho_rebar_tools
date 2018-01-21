@@ -1,2 +1,2 @@
-{description,   "Default Thumbs file, with Common Test and EScript."}.
-{file,          "defaults/thumbs-ct-es.yml", ".thumbs.yml"}.
+{description,   "Default Travis-CI file, with Common Test and EScript."}.
+{file,          "defaults/travis-ct-es.yml", ".travis.yml"}.

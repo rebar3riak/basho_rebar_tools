@@ -1,5 +1,6 @@
 %% -------------------------------------------------------------------
 %%
+%% Copyright (c) 2018 Rebar3Riak Contributors
 %% Copyright (c) 2016-2017 Basho Technologies, Inc.
 %%
 %% This file is provided to you under the Apache License,
@@ -19,20 +20,20 @@
 %% -------------------------------------------------------------------
 
 %%
-%% @doc BRT provider for the `brt-deps' command.
+%% @doc RRP provider for the `rrp-deps' command.
 %%
--module(brt_prv_deps).
+-module(rrp_prv_deps).
 
 %% provider behavior
--ifndef(BRT_VALIDATE).
--behaviour(brt).
+-ifndef(RRP_VALIDATE).
+-behaviour(rrp).
 -endif.
 -export([do/1, format_error/1, spec/0]).
 
--include("brt.hrl").
+-include("rrp.hrl").
 
--define(PROVIDER_ATOM,  'brt-deps').
--define(PROVIDER_STR,   "brt-deps").
+-define(PROVIDER_ATOM,  'rrp-deps').
+-define(PROVIDER_STR,   "rrp-deps").
 -define(PROVIDER_DEPS,  [compile]).
 -define(PROVIDER_OPTS,  [
     {check, $c, "check", boolean,
@@ -41,19 +42,19 @@
         "List the full dependency specifications."},
     {short, $s, "short", boolean,
         "List the dependency names [default]."},
-    ?BRT_RECURSIVE_OPT,
+    ?RRP_RECURSIVE_OPT,
     {rebar2, $2, "rebar2", boolean,
         "Write dependencies in Rebar2 format."
         "Only meaningful in list (-l|--list) mode."},
-    ?BRT_VERBOSITY_OPTS
+    ?RRP_VERBOSITY_OPTS
 ]).
 
 %% ===================================================================
 %% Behavior
 %% ===================================================================
 
--spec do(State :: brt:rebar_state())
-        -> {ok, brt:rebar_state()} | brt:prv_error().
+-spec do(State :: rrp:rebar_state())
+        -> {ok, rrp:rebar_state()} | rrp:prv_error().
 %%
 %% @doc Execute the provider command logic.
 %%
@@ -61,12 +62,12 @@ do(State) ->
     {Opts, _} = rebar_state:command_parsed_args(State),
     ConfigVsn = case proplists:get_value(rebar2, Opts) of
         true ->
-            brt_rebar:config_format(rebar2);
+            rrp_rebar:config_format(rebar2);
         _ ->
-            brt_rebar:config_format()
+            rrp_rebar:config_format()
     end,
     Result = handle_command(Opts, State),
-    _ = brt_rebar:config_format(ConfigVsn),
+    _ = rrp_rebar:config_format(ConfigVsn),
     Result.
 
 -spec format_error(Error :: term()) -> iolist().
@@ -74,7 +75,7 @@ do(State) ->
 %% @doc Format errors for display.
 %%
 format_error(Error) ->
-    brt:format_error(Error).
+    rrp:format_error(Error).
 
 -spec spec() -> [{atom(), term()}].
 %%
@@ -108,25 +109,25 @@ long_desc() ->
 %% Internal
 %%====================================================================
 
--type context() ::  {brt_xref:xref(), boolean()}.
+-type context() ::  {rrp_xref:xref(), boolean()}.
 
 -spec handle_command(
-    Opts :: [proplists:property()], State :: brt:rebar_state())
-        -> {ok, brt:rebar_state()} | brt:prv_error().
+    Opts :: [proplists:property()], State :: rrp:rebar_state())
+        -> {ok, rrp:rebar_state()} | rrp:prv_error().
 handle_command(Opts, State) ->
     ?LOG_INFO("Calculating dependencies...", []),
-    case brt_xref:new(State) of
+    case rrp_xref:new(State) of
         {ok, XRef} ->
             Targets = case proplists:get_value(recurse, Opts) of
                 true ->
                     all;
                 _ ->
-                    brt_rebar:prj_app_specs(State)
+                    rrp_rebar:prj_app_specs(State)
             end,
             Result = case proplists:get_value(check, Opts) of
                 true ->
                     CCtx = {XRef, true},
-                    case brt_rebar:fold(Targets, fun check/3, CCtx, State) of
+                    case rrp_rebar:fold(Targets, fun check/3, CCtx, State) of
                         {ok, {_, true}} ->
                             {ok, State};
                         {ok, _} ->
@@ -136,31 +137,31 @@ handle_command(Opts, State) ->
                     end;
                 _ ->
                     DCtx = {XRef, proplists:get_value(list, Opts, false)},
-                    case brt_rebar:fold(Targets, fun display/3, DCtx, State) of
+                    case rrp_rebar:fold(Targets, fun display/3, DCtx, State) of
                         {ok, _} ->
                             {ok, State};
                         DErr ->
                             DErr
                     end
             end,
-            brt_xref:stop(XRef),
+            rrp_xref:stop(XRef),
             Result;
         Error ->
             Error
     end.
 
 -spec check(
-        App     :: brt:app_spec(),
+        App     :: rrp:app_spec(),
         Context :: context(),
-        State   :: brt:rebar_state())
-        -> {ok, context()} | brt:prv_error().
+        State   :: rrp:rebar_state())
+        -> {ok, context()} | rrp:prv_error().
 
 check({Name, _, _} = App, {XRef, _} = Context, State) ->
     ?LOG_DEBUG("~s:check/3: App = ~p", [?MODULE, App]),
-    case brt_xref:app_deps(XRef, Name) of
+    case rrp_xref:app_deps(XRef, Name) of
         {ok, XrefApps} ->
-            AppInfo = brt_rebar:app_info(Name, State),
-            ConfDeps = lists:sort([brt:to_atom(R)
+            AppInfo = rrp_rebar:app_info(Name, State),
+            ConfDeps = lists:sort([rrp:to_atom(R)
                 || R <- rebar_app_info:deps(AppInfo)]),
             CalcDeps = lists:sort(XrefApps -- [Name]),
             case ConfDeps =:= CalcDeps of
@@ -176,17 +177,17 @@ check({Name, _, _} = App, {XRef, _} = Context, State) ->
     end.
 
 -spec display(
-        App     :: brt:app_spec(),
+        App     :: rrp:app_spec(),
         Context :: context(),
-        State   :: brt:rebar_state())
-        -> {ok, context()} | brt:prv_error().
+        State   :: rrp:rebar_state())
+        -> {ok, context()} | rrp:prv_error().
 
 display({Name, _, _} = App, {XRef, Long} = Context, _State) ->
     ?LOG_DEBUG("~s:display/3: App = ~p", [?MODULE, App]),
-    case brt_xref:app_deps(XRef, Name) of
+    case rrp_xref:app_deps(XRef, Name) of
         {ok, XrefApps} ->
             Prod = XrefApps -- [Name],
-            Test = brt_fudge:test_deps(App) -- XrefApps,
+            Test = rrp_fudge:test_deps(App) -- XrefApps,
             io:format("~s:~n", [Name]),
             display_deps(Long, 1, Prod, Test),
             {ok, Context};
@@ -197,16 +198,16 @@ display({Name, _, _} = App, {XRef, Long} = Context, _State) ->
 -spec display_deps(
         Long    :: boolean(),
         Indent  :: non_neg_integer() | iolist(),
-        Prod    :: [brt:app_name()],
-        Test    :: [brt:app_name()])
+        Prod    :: [rrp:app_name()],
+        Test    :: [rrp:app_name()])
         -> ok.
 
 display_deps(Long, Indent, Prod, []) ->
-    display_deps(Long, brt_io:inc_indent(Indent), Prod);
+    display_deps(Long, rrp_io:inc_indent(Indent), Prod);
 
 display_deps(Long, Level, Prod, Test) ->
-    Indent = brt_io:indent(Level),
-    SubInd = brt_io:inc_indent(Indent),
+    Indent = rrp_io:indent(Level),
+    SubInd = rrp_io:inc_indent(Indent),
     io:put_chars([Indent, "Prod:\n"]),
     display_deps(Long, SubInd, Prod),
     io:put_chars([Indent, "Test:\n"]),
@@ -215,11 +216,11 @@ display_deps(Long, Level, Prod, Test) ->
 -spec display_deps(
         Long    :: boolean(),
         Indent  :: iolist(),
-        Apps    :: [brt:app_name()])
+        Apps    :: [rrp:app_name()])
         -> ok.
 
 display_deps(true, Indent, Apps) ->
-    brt_io:write_deps(standard_io, Indent, Apps);
+    rrp_io:write_deps(standard_io, Indent, Apps);
 
 display_deps(false, Indent, Apps) ->
     lists:foreach(fun(App) -> io:format("~s~p~n", [Indent, App]) end, Apps).

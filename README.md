@@ -6,6 +6,9 @@ This project is forked from [Basho Rebar Tools][brt] (BRT) and modified for use 
 
 ## Status
 
+[![Build Status](https://travis-ci.org/rebar3riak/riak_rebar_plugin.svg?branch=master)](https://travis-ci.org/rebar3riak/riak_rebar_plugin)
+[![Build Status](https://travis-ci.org/rebar3riak/riak_rebar_plugin.svg?branch=develop)](https://travis-ci.org/rebar3riak/riak_rebar_plugin)
+
 ***Work In Progress!***
 
 ### Branches

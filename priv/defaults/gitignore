@@ -24,6 +24,7 @@
 .settings/
 .tm_properties
 /*.txt
+/Makefile
 erln8.config
 tmp/
 

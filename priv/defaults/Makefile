@@ -1,6 +1,6 @@
 # -------------------------------------------------------------------
 #
-# Copyright (c) {{copyright_year}} Basho Technologies, Inc.
+# Copyright (c) {{copyright_year}} {{author_name}}
 #
 # This file is provided to you under the Apache License,
 # Version 2.0 (the "License"); you may not use this file
@@ -45,7 +45,7 @@ compile :: prereqs
 	$(REBAR3) as prod compile
 
 check :: prereqs
-	$(REBAR3) as check do brt-deps --check, xref, dialyzer
+	$(REBAR3) as check do rrp-deps --check, xref, dialyzer
 
 clean :: prereqs
 	$(REBAR3) clean --all

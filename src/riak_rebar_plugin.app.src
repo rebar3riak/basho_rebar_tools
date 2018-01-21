@@ -1,6 +1,7 @@
 %% -*- mode: erlang; erlang-indent-level: 4; indent-tabs-mode: nil -*-
 %% -------------------------------------------------------------------
 %%
+%% Copyright (c) 2018 Rebar3Riak Contributors
 %% Copyright (c) 2016-2017 Basho Technologies, Inc.
 %%
 %% This file is provided to you under the Apache License,
@@ -19,15 +20,15 @@
 %%
 %% -------------------------------------------------------------------
 
-{application, basho_rebar_tools,
+{application, riak_rebar_plugin,
 [
-    {description,   "Basho Rebar3 development support tools."},
-    {vsn,           "0.5.0"},
+    {description,   "Riak Rebar3 development support tools."},
+    {vsn,           "0.7.0"},
     {modules,       []},
     {registered,    []},
     {applications,  [compiler, inets, kernel, ssl, stdlib, tools]},
     % Packaging attributes
-    {maintainers,   ["Basho Technologies, Inc."]},
+    {maintainers,   ["Rebar3Riak Contributors"]},
     {licenses,      ["Apache 2.0"]},
-    {links,         ["GitHub", "https://github.com/basho/basho_rebar_tools"]}
+    {links,         ["GitHub", "https://github.com/rebar3riak/riak_rebar_plugin"]}
 ]}.

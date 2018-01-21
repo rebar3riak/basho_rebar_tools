@@ -1,5 +1,6 @@
 %% -------------------------------------------------------------------
 %%
+%% Copyright (c) 2018 Rebar3Riak Contributors
 %% Copyright (c) 2016 Basho Technologies, Inc.
 %%
 %% This file is provided to you under the Apache License,
@@ -18,7 +19,7 @@
 %%
 %% -------------------------------------------------------------------
 
--module(brt_rebar).
+-module(rrp_rebar).
 
 % API
 -export([
@@ -52,12 +53,12 @@
 % Private
 -export([init/0]).
 
--include("brt.hrl").
+-include("rrp.hrl").
 
 -type fold_ctx()    ::  term().
--type fold_func()   ::  fun((brt:app_spec(), fold_ctx(), brt:rebar_state())
-                        -> {ok, fold_ctx()} | brt:err_result()).
--type fold_pred()   ::  fun((brt:app_spec(), brt:rebar_state()) -> boolean()).
+-type fold_func()   ::  fun((rrp:app_spec(), fold_ctx(), rrp:rebar_state())
+                        -> {ok, fold_ctx()} | rrp:err_result()).
+-type fold_pred()   ::  fun((rrp:app_spec(), rrp:rebar_state()) -> boolean()).
 
 -define(REBAR_CFG_NAMES_KEY,    {?MODULE, rebar_config_names}).
 -define(REBAR_CFG_NAMES(),      erlang:get(?REBAR_CFG_NAMES_KEY)).
@@ -71,8 +72,8 @@
 %% API
 %% ===================================================================
 
--spec app_deps(State :: brt:rebar_state())
-        -> {ok, [brt:app_name()]} | brt:err_result().
+-spec app_deps(State :: rrp:rebar_state())
+        -> {ok, [rrp:app_name()]} | rrp:err_result().
 %%
 %% @doc Returns the applications called by the current project's application(s).
 %%
@@ -80,14 +81,14 @@
 %%
 %% A new xref server is created, populated, and discarded by this operation -
 %% if multiple analyses are to be performed use the discrete functions in the
-%% {@link brt_xref} module.
+%% {@link rrp_xref} module.
 %%
 app_deps(State) ->
-    case brt_xref:new(State) of
+    case rrp_xref:new(State) of
         {ok, XRef} ->
             Apps = prj_apps(State),
-            Result = brt_xref:app_deps(XRef, Apps),
-            brt_xref:stop(XRef),
+            Result = rrp_xref:app_deps(XRef, Apps),
+            rrp_xref:stop(XRef),
             case Result of
                 {ok, Deps} ->
                     {ok, Deps -- Apps};
@@ -99,9 +100,9 @@ app_deps(State) ->
     end.
 
 -spec app_info(
-        App :: brt:app_name() | binary(),
-        Ref :: brt:rebar_state() | [brt:rebar_app()])
-        -> brt:rebar_app() | false.
+        App :: rrp:app_name() | binary(),
+        Ref :: rrp:rebar_state() | [rrp:rebar_app()])
+        -> rrp:rebar_app() | false.
 %%
 %% @doc Finds the rebar_app_info:t() for the specified application.
 %%
@@ -120,7 +121,7 @@ app_info(_, []) ->
     false;
 
 app_info(Name, Ref) when not erlang:is_binary(Name) ->
-    app_info(brt:to_binary(Name), Ref);
+    app_info(rrp:to_binary(Name), Ref);
 
 app_info(Name, State) when ?is_rebar_state(State) ->
     case app_info(Name, rebar_state:project_apps(State)) of
@@ -130,8 +131,8 @@ app_info(Name, State) when ?is_rebar_state(State) ->
             Ret
     end.
 
--spec apps_deps_dirs(State :: brt:rebar_state())
-        -> {ok, [brt:app_spec()], [brt:fs_path()]} | brt:err_result().
+-spec apps_deps_dirs(State :: rrp:rebar_state())
+        -> {ok, [rrp:app_spec()], [rrp:fs_path()]} | rrp:err_result().
 %%
 %% @doc Return the project applications and all dependency lib directories.
 %%
@@ -159,7 +160,7 @@ apps_deps_dirs(State) when ?is_rebar_state(State) ->
     case prj_app_specs(State) of
         [] ->
             % This really should never happen, but maintain sanity if it does.
-            {error, {brt, app_undefined}};
+            {error, {rrp, app_undefined}};
         Specs ->
             Profs   = order_profiles(rebar_state:current_profiles(State), []),
             % There are a LOT of nuances in how Rebar assembles directory paths
@@ -169,17 +170,17 @@ apps_deps_dirs(State) when ?is_rebar_state(State) ->
             % Some paths and/or segments may have embedded dots, so make sure
             % they're canonical for later comparisons.
             % Rebar's rebar_dir:make_normalized_path/1 should do the same thing
-            % as brt:abspath/1, but the latter is used in non-rebar-specific
+            % as rrp:abspath/1, but the latter is used in non-rebar-specific
             % code so use it here, too ... just in case.
-            BaseDir = brt:abspath(rebar_dir:base_dir(State)),
-            BldDir  = brt:abspath(rebar_state:get(State, base_dir)),
-            CoDir   = brt:abspath(rebar_dir:checkouts_dir(State)),
+            BaseDir = rrp:abspath(rebar_dir:base_dir(State)),
+            BldDir  = rrp:abspath(rebar_state:get(State, base_dir)),
+            CoDir   = rrp:abspath(rebar_dir:checkouts_dir(State)),
             LibDir  = rebar_state:get(State, deps_dir),
             % Put together all of the library directories where dependencies
             % might be found - these directories MAY NOT all exist!
             % The checkouts directory is always at the head of the result list,
             % and the `default' profile directory is always the last.
-            Cands   = [brt:abspath(filename:join([BldDir, Prof, LibDir]))
+            Cands   = [rrp:abspath(filename:join([BldDir, Prof, LibDir]))
                         || Prof <- Profs],
             Tail    = [Cand || Cand <- Cands, Cand /= BaseDir, Cand /= CoDir],
             Libs    = [CoDir, BaseDir | Tail],
@@ -209,9 +210,9 @@ cfg_file_names([_|_] = Names) ->
     ?REBAR_CFG_NAMES(Names).
 
 -spec config_file(
-        App :: brt:app_name() | brt:app_spec() | binary(),
-        Ref :: brt:rebar_state() | [brt:rebar_app()])
-        -> brt:fs_path() | false.
+        App :: rrp:app_name() | rrp:app_spec() | binary(),
+        Ref :: rrp:rebar_state() | [rrp:rebar_app()])
+        -> rrp:fs_path() | false.
 %%
 %% @doc Returns the path of the rebar.config file for the specified application.
 %%
@@ -251,15 +252,15 @@ config_file(Name, Ref) ->
     end.
 
 -spec copyright_info(
-        File    :: brt:fs_path(),
+        File    :: rrp:fs_path(),
         Loose   :: boolean(),
-        Type    :: brt_io:comment_type())
-        ->  current | brt:basho_year() | iolist() | brt:prv_error().
+        Type    :: rrp_io:comment_type())
+        ->  current | rrp:basho_year() | iolist() | rrp:prv_error().
 %%
 %% @doc Encapsulates acquisition of copyright information for a rebar provider.
 %%
 copyright_info(File, Loose, Type) ->
-    case brt_io:copyright_info(File, Type) of
+    case rrp_io:copyright_info(File, Type) of
         {basho, Year} ->
             Year;
         {error, enoent} ->
@@ -270,7 +271,7 @@ copyright_info(File, Loose, Type) ->
                 "statement(s), generating default using first commit date, "
                 "verify before committing changes.",
                 [File]),
-            brt_repo:added_year(File, current);
+            rrp_repo:added_year(File, current);
         {other, Header} ->
             case Loose of
                 true ->
@@ -290,28 +291,28 @@ copyright_info(File, Loose, Type) ->
                             Header
                     end;
                 _ ->
-                    {error, {brt, {copyright_dirty, File}}}
+                    {error, {rrp, {copyright_dirty, File}}}
             end;
         {error, What} when erlang:is_atom(What) ->
-            brt:file_error(File, What);
+            rrp:file_error(File, What);
         Error ->
             Error
     end.
 
--spec dep_apps(State :: brt:rebar_state()) -> [brt:app_name()].
+-spec dep_apps(State :: rrp:rebar_state()) -> [rrp:app_name()].
 %%
 %% @doc Returns the names of the current project's applications.
 %%
 dep_apps(State) ->
-    [brt:to_atom(rebar_app_info:name(AI))
+    [rrp:to_atom(rebar_app_info:name(AI))
         || AI <- rebar_state:all_deps(State)].
 
--spec dep_app_specs(State :: brt:rebar_state()) -> [brt:app_spec()].
+-spec dep_app_specs(State :: rrp:rebar_state()) -> [rrp:app_spec()].
 %%
 %% @doc Returns the name/path tuples of the current project's applications.
 %%
 dep_app_specs(State) ->
-    [{brt:to_atom(rebar_app_info:name(AI)),
+    [{rrp:to_atom(rebar_app_info:name(AI)),
         rebar_app_info:dir(AI), rebar_app_info:out_dir(AI)}
             || AI <- rebar_state:all_deps(State)].
 
@@ -344,11 +345,11 @@ config_format(rebar2) ->
     config_format(2).
 
 -spec fold(
-        Select  ::  [brt:app_spec()] | all | fold_pred(),
+        Select  ::  [rrp:app_spec()] | all | fold_pred(),
         Func    ::  fold_func(),
         Context ::  fold_ctx(),
-        State   ::  brt:rebar_state())
-        -> {ok, fold_ctx()} | brt:err_result().
+        State   ::  rrp:rebar_state())
+        -> {ok, fold_ctx()} | rrp:err_result().
 %%
 %% @doc Apply a function to each selected application.
 %%
@@ -368,7 +369,7 @@ config_format(rebar2) ->
 %%
 %% The last Context is returned when the iteration is complete.
 %%
-%% The BRT configuration in each non-project (i.e. dependency) application
+%% The RRP configuration in each non-project (i.e. dependency) application
 %% directory is merged into the effective configuration before the function is
 %% invoked and reset after it, so applications inherit the top-level
 %% configuration but not each others.
@@ -416,7 +417,7 @@ fold(Pred, Func, Context, State) ->
     fold_apps(PrjApps ++ DepApps, Func, Context, State).
 
 -spec in_checkouts(
-        App :: brt:app_spec() | brt:fs_path(), State :: brt:rebar_state())
+        App :: rrp:app_spec() | rrp:fs_path(), State :: rrp:rebar_state())
         -> boolean().
 %%
 %% @doc Reports whether an application is in State's `_checkouts' directory.
@@ -424,11 +425,11 @@ fold(Pred, Func, Context, State) ->
 in_checkouts({_, Path, _}, State) ->
     in_checkouts(Path, State);
 in_checkouts(Path, State) ->
-    brt:abspath(filename:dirname(Path))
-        == brt:abspath(rebar_dir:checkouts_dir(State)).
+    rrp:abspath(filename:dirname(Path))
+        == rrp:abspath(rebar_dir:checkouts_dir(State)).
 
 -spec in_prj_or_checkouts(
-        App :: brt:app_spec() | brt:fs_path(), State :: brt:rebar_state())
+        App :: rrp:app_spec() | rrp:fs_path(), State :: rrp:rebar_state())
         -> boolean().
 %%
 %% @doc Equivalent to {@link in_project/2} orelse {@link in_checkouts/2}.
@@ -437,19 +438,19 @@ in_prj_or_checkouts(App, State) ->
     in_project(App, State) orelse in_checkouts(App, State).
 
 -spec in_project(
-        App :: brt:app_spec() | brt:fs_path(), State :: brt:rebar_state())
+        App :: rrp:app_spec() | rrp:fs_path(), State :: rrp:rebar_state())
         -> boolean().
 %%
 %% @doc Reports whether an application is in State's project.
 %%
 in_project({Name, _, _}, State) ->
-    AppInfName = brt:to_binary(Name),
+    AppInfName = rrp:to_binary(Name),
     lists:any(
         fun(AppInfo) ->
             rebar_app_info:name(AppInfo) == AppInfName
         end, rebar_state:project_apps(State));
 in_project(Path, State) ->
-    brt:abspath(Path) == brt:abspath(rebar_state:dir(State)).
+    rrp:abspath(Path) == rrp:abspath(rebar_state:dir(State)).
 
 -spec init() -> ok.
 %% @private
@@ -469,20 +470,20 @@ init() ->
     _ = config_format(default),
     ok.
 
--spec prj_apps(State :: brt:rebar_state()) -> [brt:app_name()].
+-spec prj_apps(State :: rrp:rebar_state()) -> [rrp:app_name()].
 %%
 %% @doc Returns the names of the current project's applications.
 %%
 prj_apps(State) ->
-    [brt:to_atom(rebar_app_info:name(AI))
+    [rrp:to_atom(rebar_app_info:name(AI))
         || AI <- rebar_state:project_apps(State)].
 
--spec prj_app_specs(State :: brt:rebar_state()) -> [brt:app_spec()].
+-spec prj_app_specs(State :: rrp:rebar_state()) -> [rrp:app_spec()].
 %%
 %% @doc Returns the name/path tuples of the current project's applications.
 %%
 prj_app_specs(State) ->
-    [{brt:to_atom(rebar_app_info:name(AI)),
+    [{rrp:to_atom(rebar_app_info:name(AI)),
         rebar_app_info:dir(AI), rebar_app_info:out_dir(AI)}
             || AI <- rebar_state:project_apps(State)].
 
@@ -490,7 +491,7 @@ prj_app_specs(State) ->
 %% Dependency Formats
 %% ===================================================================
 
--spec format_dep(Indent :: iolist(), Dep :: brt:app_name() | brt:dep_spec())
+-spec format_dep(Indent :: iolist(), Dep :: rrp:app_name() | rrp:dep_spec())
         -> iolist().
 %%
 %% @doc Returns the specified dependency in the current version format.
@@ -528,7 +529,7 @@ prj_app_specs(State) ->
 %% TODO: Package manager specs
 %%
 format_dep(Indent, AppName) when ?is_app_name(AppName) ->
-    format_dep(Indent, brt_config:pkg_dep(AppName));
+    format_dep(Indent, rrp_config:pkg_dep(AppName));
 format_dep(Indent, Dep) ->
     case config_format() of
         2 ->
@@ -537,7 +538,7 @@ format_dep(Indent, Dep) ->
             format_dep3(Indent, Dep)
     end.
 
--spec format_dep3(Indent :: iolist(), Dep :: brt:app_name() | brt:dep_spec())
+-spec format_dep3(Indent :: iolist(), Dep :: rrp:app_name() | rrp:dep_spec())
         -> iolist().
 
 format_dep3(Indent,
@@ -567,7 +568,7 @@ format_dep3(Indent,
         [AppName, WrapType,
             Indent, RepoType, RepoLoc,
             Indent, VsnType, VsnStr,
-            Indent, brt_io:format_flat(WrapOpt)]);
+            Indent, rrp_io:format_flat(WrapOpt)]);
 
 format_dep3(Indent,
     {AppName, {WrapType, {RepoType, RepoLoc, {VsnType, VsnStr}}}})
@@ -592,7 +593,7 @@ format_dep3(Indent,
 format_dep3(_Indent, Dep) ->
     erlang:error(badarg, [rebar3, Dep]).
 
--spec format_dep2(Indent :: iolist(), Dep :: brt:app_name() | brt:dep_spec())
+-spec format_dep2(Indent :: iolist(), Dep :: rrp:app_name() | rrp:dep_spec())
         -> iolist().
 
 format_dep2(Indent,
@@ -655,7 +656,7 @@ format_dep2(Indent, {AppName, {RepoType, RepoLoc, VsnStr}})
 format_dep2(_Indent, Dep) ->
     erlang:error(badarg, [rebar2, Dep]).
 
--spec parse_dep(Dep :: brt:dep_spec()) -> brt:dep_spec().
+-spec parse_dep(Dep :: rrp:dep_spec()) -> rrp:dep_spec().
 %%
 %% @doc Returns the specified dependency as an appropriate internal term.
 %%
@@ -723,7 +724,7 @@ parse_dep(Dep) ->
 %% Internal
 %% ===================================================================
 
--spec config_file(Path :: brt:fs_path()) -> brt:fs_path().
+-spec config_file(Path :: rrp:fs_path()) -> rrp:fs_path().
 %
 % Returns the path of the rebar.config file for the specified directory.
 %
@@ -740,7 +741,7 @@ parse_dep(Dep) ->
 %
 config_file(Path) ->
     FileNames = cfg_file_names(),
-    case brt:find_first(file, FileNames, [Path]) of
+    case rrp:find_first(file, FileNames, [Path]) of
         false ->
             filename:absname(erlang:hd(FileNames), Path);
         File ->
@@ -748,11 +749,11 @@ config_file(Path) ->
     end.
 
 -spec fold_apps(
-        Select  ::  [{prj | dep, brt:app_spec()}],
+        Select  ::  [{prj | dep, rrp:app_spec()}],
         Func    ::  fold_func(),
         Context ::  fold_ctx(),
-        State   ::  brt:rebar_state())
-        -> {ok, fold_ctx()} | brt:err_result().
+        State   ::  rrp:rebar_state())
+        -> {ok, fold_ctx()} | rrp:err_result().
 %
 % Inner behavior for fold/4.
 %
@@ -764,10 +765,10 @@ fold_apps([{prj, {_, _, _} = App} | Apps], Func, Context, State) ->
             Ret
     end;
 fold_apps([{dep, {_, Path, _} = App} | Apps], Func, Context, State) ->
-    case brt_config:merge(Path) of
+    case rrp_config:merge(Path) of
         {ok, Config} ->
             Ret = Func(App, Context, State),
-            brt_config:reset(Config),
+            rrp_config:reset(Config),
             case Ret of
                 {ok, NextContext} ->
                     fold_apps(Apps, Func, NextContext, State);

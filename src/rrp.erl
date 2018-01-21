@@ -1,5 +1,6 @@
 %% -------------------------------------------------------------------
 %%
+%% Copyright (c) 2018 Rebar3Riak Contributors
 %% Copyright (c) 2016-2017 Basho Technologies, Inc.
 %%
 %% This file is provided to you under the Apache License,
@@ -19,11 +20,11 @@
 %% -------------------------------------------------------------------
 
 %%
-%% @doc Basho Rebar Tools command provider behavior and common operations.
+%% @doc Riak Rebar Plugin command provider behavior and common operations.
 %%
-%% The `brt' behavior is a superset of rebar's `provider', with stricter types.
+%% The `rrp' behavior is a superset of rebar's `provider', with stricter types.
 %%
--module(brt).
+-module(rrp).
 
 % API
 -export([
@@ -61,7 +62,7 @@
     app_spec/0,
     app_src_dir/0,
     basho_year/0,
-    brt_app_dir/0,
+    rrp_app_dir/0,
     dep_loc/0,
     dep_spec/0,
     dep_type/0,
@@ -84,12 +85,12 @@
     year1970/0
 ]).
 
--include("brt.hrl").
+-include("rrp.hrl").
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
 -endif.
 
--ifdef(BRT_CHECK).
+-ifdef(RRP_CHECK).
 -type rebar_app()   ::  rebar_app_info:t().
 -type rebar_prov()  ::  providers:t().
 -type rebar_state() ::  rebar_state:t().
@@ -104,7 +105,7 @@
 -type app_spec()    ::  {app_name(), app_src_dir(), app_out_dir()}.
 -type app_src_dir() ::  fs_path().
 -type basho_year()  ::  ?BASHO_YEAR_MIN..9999 | current.
--type brt_app_dir() ::  app | ebin | obj | priv | this.
+-type rrp_app_dir() ::  app | ebin | obj | priv | this.
 -type dep_loc()     ::  string().   % currently, always a GitHub URL
 -type dep_spec()    ::  {app_name(), rsrc_spec() | rsrc_wrap()}.
 -type dep_type()    ::  atom().     % currently, git or raw
@@ -209,13 +210,13 @@ app_dir_to_name(AppDir) ->
                 string:tokens(filename:basename(AppDir), "-")))
     end.
 
--spec consult_app_file(Dir :: brt_app_dir(), FileName :: file:name_all())
+-spec consult_app_file(Dir :: rrp_app_dir(), FileName :: file:name_all())
         -> {ok, list()} | err_string().
 %%
 %% @doc Return the terms in FileName in the specified application directory.
 %%
 consult_app_file(Dir, FileName) ->
-    File = filename:join(brt_dir(Dir), FileName),
+    File = filename:join(rrp_dir(Dir), FileName),
     case file:consult(File) of
         {error, What} ->
             file_error(File, What);
@@ -223,8 +224,8 @@ consult_app_file(Dir, FileName) ->
             Result
     end.
 
--spec dep_list(AppsOrDeps :: [brt:app_name() | brt:dep_spec()])
-        -> [brt:dep_spec()].
+-spec dep_list(AppsOrDeps :: [rrp:app_name() | rrp:dep_spec()])
+        -> [rrp:dep_spec()].
 %%
 %% @doc Returns a list of dependency tuples from a possibly mixed input.
 %%
@@ -233,12 +234,12 @@ dep_list(AppsOrDeps) ->
         true ->
             AppsOrDeps;
         _ ->
-            [brt_config:pkg_dep(Elem) || Elem <- AppsOrDeps]
+            [rrp_config:pkg_dep(Elem) || Elem <- AppsOrDeps]
     end.
 
 -spec dep_list_member(
-        Package :: brt:app_name(),
-        AppsOrDeps :: [brt:app_name() | brt:dep_spec()])
+        Package :: rrp:app_name(),
+        AppsOrDeps :: [rrp:app_name() | rrp:dep_spec()])
         -> boolean().
 %%
 %% @doc Reports whether an application is contained in a list of dependencies.
@@ -248,7 +249,7 @@ dep_list_member(PkgSpec, AppsOrDeps) when ?is_rebar_dep(PkgSpec) ->
 dep_list_member(PkgName, AppsOrDeps) ->
     is_list_key(to_atom(PkgName), AppsOrDeps).
 
--spec dep_name(Dep :: brt:app_name() | brt:dep_spec()) -> brt:app_name().
+-spec dep_name(Dep :: rrp:app_name() | rrp:dep_spec()) -> rrp:app_name().
 %%
 %%
 %%
@@ -318,7 +319,7 @@ format_error(copyright_dirty) ->
 format_error(deps_mismatch) ->
     "Static and calculated dependencies differ";
 format_error(overwrite_blocked) ->
-    "Overwrite disabled by 'brt_protect' attribute";
+    "Overwrite disabled by 'rrp_protect' attribute";
 format_error(repo_fail) ->
     "Repository operation failed";
 format_error({?MODULE, What}) ->
@@ -458,19 +459,19 @@ is_min_version(_, _) ->
 %% by {@link lists:prefix/2}.
 %%
 list_modules(ModPrefix) ->
-    ObjDir  = brt_dir(obj),
+    ObjDir  = rrp_dir(obj),
     ObjExt  = code:objfile_extension(),
     Pattern = lists:flatten([ModPrefix, $*, ObjExt]),
     Objs    = filelib:wildcard(Pattern, ObjDir),
     [erlang:list_to_atom(filename:basename(F, ObjExt)) || F <- Objs].
 
--spec read_app_file(Dir :: brt_app_dir(), FileName :: file:name_all())
+-spec read_app_file(Dir :: rrp_app_dir(), FileName :: file:name_all())
         -> {ok, binary()} | err_string().
 %%
 %% @doc Return the contents of FileName in the specified application directory.
 %%
 read_app_file(Dir, FileName) ->
-    File = filename:join(brt_dir(Dir), FileName),
+    File = filename:join(rrp_dir(Dir), FileName),
     case file:read_file(File) of
         {error, What} ->
             file_error(File, What);
@@ -624,14 +625,14 @@ parse_version_str(_, [_|_] = Result) ->
 parse_version_str(VsnIn, _) ->
     {error, {?MODULE, {not_version_string, VsnIn}}}.
 
--spec brt_dir(Dir :: brt_app_dir()) -> fs_path().
+-spec rrp_dir(Dir :: rrp_app_dir()) -> fs_path().
 %
 % Return the path to a [sub-]directory within this application, denoted by Dir.
 %
 % Beware infinite recursion!
 % The 'this' case is the only one that's guaranteed not to recurse.
 %
-brt_dir(app = What) ->
+rrp_dir(app = What) ->
     Key = {?MODULE, What},
     case erlang:get(Key) of
         undefined ->
@@ -641,10 +642,10 @@ brt_dir(app = What) ->
                         true ->
                             Lib;
                         _ ->
-                            filename:dirname(brt_dir(this))
+                            filename:dirname(rrp_dir(this))
                     end;
                 _ ->
-                    filename:dirname(brt_dir(this))
+                    filename:dirname(rrp_dir(this))
             end,
             erlang:put(Key, ADir),
             ADir;
@@ -652,7 +653,7 @@ brt_dir(app = What) ->
             Val
     end;
 
-brt_dir(ebin = What) ->
+rrp_dir(ebin = What) ->
     Key = {?MODULE, What},
     case erlang:get(Key) of
         undefined ->
@@ -662,10 +663,10 @@ brt_dir(ebin = What) ->
                         true ->
                             Lib;
                         _ ->
-                            brt_dir(this)
+                            rrp_dir(this)
                     end;
                 _ ->
-                    brt_dir(this)
+                    rrp_dir(this)
             end,
             erlang:put(Key, EBin),
             EBin;
@@ -673,10 +674,10 @@ brt_dir(ebin = What) ->
             Val
     end;
 
-brt_dir(obj) ->
-    brt_dir(ebin);
+rrp_dir(obj) ->
+    rrp_dir(ebin);
 
-brt_dir(priv = What) ->
+rrp_dir(priv = What) ->
     Key = {?MODULE, What},
     case erlang:get(Key) of
         undefined ->
@@ -686,10 +687,10 @@ brt_dir(priv = What) ->
                         true ->
                             Lib;
                         _ ->
-                            filename:join(brt_dir(app), priv)
+                            filename:join(rrp_dir(app), priv)
                     end;
                 _ ->
-                    filename:join(brt_dir(app), priv)
+                    filename:join(rrp_dir(app), priv)
             end,
             erlang:put(Key, PDir),
             PDir;
@@ -700,7 +701,7 @@ brt_dir(priv = What) ->
 % This case must:
 %   Always succeed.
 %   NEVER recurse!
-brt_dir(this = What) ->
+rrp_dir(this = What) ->
     Key = {?MODULE, What},
     case erlang:get(Key) of
         undefined ->
@@ -720,7 +721,7 @@ brt_dir(this = What) ->
             Val
     end;
 
-brt_dir(Arg) ->
+rrp_dir(Arg) ->
     erlang:error(badarg, [Arg]).
 
 %% ===================================================================
@@ -729,17 +730,17 @@ brt_dir(Arg) ->
 
 -ifdef(TEST).
 
-brt_dir_test() ->
+rrp_dir_test() ->
 
-    ?assert(filelib:is_dir(brt_dir(app))),
-    ?assert(filelib:is_dir(brt_dir(ebin))),
-    ?assert(filelib:is_dir(brt_dir(obj))),
-    ?assert(filelib:is_dir(brt_dir(priv))),
-    ?assert(filelib:is_dir(brt_dir(this))),
+    ?assert(filelib:is_dir(rrp_dir(app))),
+    ?assert(filelib:is_dir(rrp_dir(ebin))),
+    ?assert(filelib:is_dir(rrp_dir(obj))),
+    ?assert(filelib:is_dir(rrp_dir(priv))),
+    ?assert(filelib:is_dir(rrp_dir(this))),
 
-    ?assertEqual(brt_dir(ebin), brt_dir(obj)),
+    ?assertEqual(rrp_dir(ebin), rrp_dir(obj)),
 
-    ?assertError(badarg, brt_dir(bogus)),
+    ?assertError(badarg, rrp_dir(bogus)),
 
     ok.
 

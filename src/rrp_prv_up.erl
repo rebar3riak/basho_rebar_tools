@@ -1,5 +1,6 @@
 %% -------------------------------------------------------------------
 %%
+%% Copyright (c) 2018 Rebar3Riak Contributors
 %% Copyright (c) 2016-2017 Basho Technologies, Inc.
 %%
 %% This file is provided to you under the Apache License,
@@ -19,20 +20,20 @@
 %% -------------------------------------------------------------------
 
 %%
-%% @doc BRT provider for the `brt-up' command.
+%% @doc RRP provider for the `rrp-up' command.
 %%
--module(brt_prv_up).
+-module(rrp_prv_up).
 
 %% provider behavior
--ifndef(BRT_VALIDATE).
--behaviour(brt).
+-ifndef(RRP_VALIDATE).
+-behaviour(rrp).
 -endif.
 -export([do/1, format_error/1, spec/0]).
 
--include("brt.hrl").
+-include("rrp.hrl").
 
--define(PROVIDER_ATOM,  'brt-up').
--define(PROVIDER_STR,   "brt-up").
+-define(PROVIDER_ATOM,  'rrp-up').
+-define(PROVIDER_STR,   "rrp-up").
 -define(PROVIDER_DEPS,  [lock]).
 -define(PROVIDER_OPTS,  [
     {sync, $s, "sync", boolean,
@@ -41,16 +42,16 @@
         "Push mirrored branches after --sync."},
     {long, $l, "long", boolean,
         "Where available, display command output."},
-    ?BRT_RECURSIVE_OPT,
-    ?BRT_CHECKOUTS_OPT,
-    ?BRT_VERBOSITY_OPTS
+    ?RRP_RECURSIVE_OPT,
+    ?RRP_CHECKOUTS_OPT,
+    ?RRP_VERBOSITY_OPTS
 ]).
 
 %% ===================================================================
 %% Behavior
 %% ===================================================================
 
--spec do(State :: brt:rebar_state()) -> {ok, brt:rebar_state()}.
+-spec do(State :: rrp:rebar_state()) -> {ok, rrp:rebar_state()}.
 %%
 %% @doc Execute the provider command logic.
 %%
@@ -64,7 +65,7 @@ do(State) ->
 %% @doc Format errors for display.
 %%
 format_error(Error) ->
-    brt:format_error(Error).
+    rrp:format_error(Error).
 
 -spec spec() -> [{atom(), term()}].
 %%
@@ -95,7 +96,7 @@ long_desc() ->
     short_desc() ++ "\n"
     "\n"
     "Synchronized branches are identified by 'mirror' action clauses in the "
-    "'brt_upstream' section of rebar.config.\n".
+    "'rrp_upstream' section of rebar.config.\n".
 
 %%====================================================================
 %% Internal
@@ -117,8 +118,8 @@ long_desc() ->
 -type mirror()  :: #mirror{}.
 
 -spec handle_command(
-    Opts :: [proplists:property()], State :: brt:rebar_state())
-        -> {ok, brt:rebar_state()} | brt:prv_error().
+    Opts :: [proplists:property()], State :: rrp:rebar_state())
+        -> {ok, rrp:rebar_state()} | rrp:prv_error().
 
 handle_command(Opts, State) ->
     case proplists:get_value(sync, Opts, true) of
@@ -127,18 +128,18 @@ handle_command(Opts, State) ->
                 true ->
                     case proplists:get_value(checkouts, Opts) of
                         true ->
-                            fun brt_rebar:in_prj_or_checkouts/2;
+                            fun rrp_rebar:in_prj_or_checkouts/2;
                         _ ->
                             all
                     end;
                 _ ->
-                    brt_rebar:prj_app_specs(State)
+                    rrp_rebar:prj_app_specs(State)
             end,
             Context = #ctx{
                 push    = proplists:get_value(push, Opts, false),
                 long    = proplists:get_value(long, Opts, false)
             },
-            case brt_rebar:fold(Select, fun update/3, Context, State) of
+            case rrp_rebar:fold(Select, fun update/3, Context, State) of
                 {ok, #ctx{status = ok}} ->
                     {ok, State};
                 {ok, #ctx{status = warn}} ->
@@ -154,15 +155,15 @@ handle_command(Opts, State) ->
     end.
 
 -spec update(
-    App     :: brt:app_spec(),
+    App     :: rrp:app_spec(),
     Context :: context(),
-    State   :: brt:rebar_state())
-        -> {ok, context()} | brt:prv_error().
+    State   :: rrp:rebar_state())
+        -> {ok, context()} | rrp:prv_error().
 
 update({Name, Path, _} = App, Context, State) ->
     ?LOG_DEBUG("~s:update/3: App = ~p", [?MODULE, App]),
-    AppInfo = brt_rebar:app_info(Name, State),
-    case dict:find(brt_upstream, rebar_app_info:opts(AppInfo)) of
+    AppInfo = rrp_rebar:app_info(Name, State),
+    case dict:find(rrp_upstream, rebar_app_info:opts(AppInfo)) of
         {ok, Upstream} ->
             {Mirrors, Status} = map_mirrors(Upstream, Name),
             case process_mirrors(Mirrors, Context, Status, Path, Name) of
@@ -178,7 +179,7 @@ update({Name, Path, _} = App, Context, State) ->
             {ok, Context}
     end.
 
--spec map_mirrors(Section :: [tuple()], AppName :: brt:app_name())
+-spec map_mirrors(Section :: [tuple()], AppName :: rrp:app_name())
         -> {[mirror()], ok | warn}.
 
 map_mirrors(Section, AppName) ->
@@ -189,7 +190,7 @@ map_mirrors(Section, AppName) ->
     Map     :: [mirror()],
     Status  :: ok | warn,
     Section :: [tuple()],
-    App     :: brt:app_name())
+    App     :: rrp:app_name())
         -> {[mirror()], ok | warn}.
 
 map_mirrors([{mirror, Upstream, Branch} | Remain], Map, Status, Section, App) ->
@@ -231,9 +232,9 @@ map_mirrors([], Map, Status, _, _) ->
     Remain  :: [mirror()],
     Context :: context(),
     Status  :: ok | warn,
-    Repo    :: brt:fs_path(),
-    App     :: brt:app_name())
-        -> ok | warn | brt:prv_error().
+    Repo    :: rrp:fs_path(),
+    App     :: rrp:app_name())
+        -> ok | warn | rrp:prv_error().
 
 process_mirrors([#mirror{mirrors = []} | Remain], Context, Status, Repo, App) ->
     process_mirrors(Remain, Context, Status, Repo, App);
@@ -250,7 +251,7 @@ process_mirrors([MRec | Remain], Context, Status, Repo, App) ->
         long    = Long
     } = Context,
     SyncBranch = lists:flatten(io_lib:format("~s-~s", [Alias, UpBranch])),
-    case brt_repo:sync_upstream(Repo, Type, URL, Push, UpBranch, SyncBranch) of
+    case rrp_repo:sync_upstream(Repo, Type, URL, Push, UpBranch, SyncBranch) of
         {ok, OutLines} ->
             case OutLines of
                 [_|_] when Long == true ->

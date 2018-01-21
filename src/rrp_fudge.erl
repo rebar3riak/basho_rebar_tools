@@ -1,5 +1,6 @@
 %% -------------------------------------------------------------------
 %%
+%% Copyright (c) 2018 Rebar3Riak Contributors
 %% Copyright (c) 2016 Basho Technologies, Inc.
 %%
 %% This file is provided to you under the Apache License,
@@ -21,19 +22,19 @@
 %%
 %% @doc This module contains kludges that should go away.
 %%
-%% @deprecated Use other BRT modules.
+%% @deprecated Use other RRP modules.
 %%
--module(brt_fudge).
+-module(rrp_fudge).
 %-deprecated(module).
 
 -export([
     test_deps/1
 ]).
 
--include("brt.hrl").
+-include("rrp.hrl").
 
--spec test_deps(Where :: brt:app_spec() | brt:fs_path() | brt:rebar_state())
-        -> [brt:app_name()] | brt:err_result().
+-spec test_deps(Where :: rrp:app_spec() | rrp:fs_path() | rrp:rebar_state())
+        -> [rrp:app_name()] | rrp:err_result().
 %
 % It would be better to use xref on test modules, which would pick up meck and
 % the like (including quickcheck, which would need to be filtered out), but
@@ -57,7 +58,7 @@ test_deps(Path) when erlang:is_list(Path) ->
             {ok, _} ->
                 erlang:error(app_malformed, [File]);
             {error, What} ->
-                {error, Error} = brt:file_error(File, What),
+                {error, Error} = rrp:file_error(File, What),
                 erlang:error(Error)
         end
     end,
@@ -83,12 +84,12 @@ test_deps(State) when ?is_rebar_state(State) ->
         [rebar_app_info:name(AI) || AI <- rebar_state:project_apps(State)],
         rebar_state:dir(State)).
 
--spec test_deps(Names :: [atom() | binary()], Path :: brt:fs_path())
-        -> [brt:app_name()].
+-spec test_deps(Names :: [atom() | binary()], Path :: rrp:fs_path())
+        -> [rrp:app_name()].
 test_deps([cuttlefish | _], _) ->
     [];
 test_deps([Name | Names], Path) ->
-    Schema = filename:join([Path, "priv", brt:to_string(Name) ++ ".schema"]),
+    Schema = filename:join([Path, "priv", rrp:to_string(Name) ++ ".schema"]),
     case filelib:is_regular(Schema) of
         true ->
             [cuttlefish];

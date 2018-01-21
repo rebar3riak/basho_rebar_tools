@@ -1,5 +1,6 @@
 %% -------------------------------------------------------------------
 %%
+%% Copyright (c) 2018 Rebar3Riak Contributors
 %% Copyright (c) 2016-2017 Basho Technologies, Inc.
 %%
 %% This file is provided to you under the Apache License,
@@ -18,7 +19,7 @@
 %%
 %% -------------------------------------------------------------------
 
--module(brt_defaults).
+-module(rrp_defaults).
 
 % API
 -export([
@@ -32,7 +33,7 @@
     rebar_config/4
 ]).
 
--include("brt.hrl").
+-include("rrp.hrl").
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
 -endif.
@@ -69,7 +70,7 @@ comment_line(Prefix, Line) ->
 copyright(Prefix) ->
     make_copyright(Prefix, copyright_year_string(current)).
 
--spec copyright(Prefix :: string(), StartYear :: brt:basho_year())
+-spec copyright(Prefix :: string(), StartYear :: rrp:basho_year())
         -> iolist().
 %%
 %% @doc Returns a Basho copyright header comment for starting-current year.
@@ -77,7 +78,7 @@ copyright(Prefix) ->
 copyright(Prefix, StartYear) ->
     make_copyright(Prefix, copyright_year_string(StartYear, current)).
 
--spec current_year() -> brt:year1970().
+-spec current_year() -> rrp:year1970().
 %%
 %% @doc Returns the current year in local time.
 %%
@@ -85,7 +86,7 @@ current_year() ->
     {{Year, _, _}, _} = calendar:local_time(),
     Year.
 
--spec file_data(FileName :: brt:fs_path()) -> binary() | none().
+-spec file_data(FileName :: rrp:fs_path()) -> binary() | none().
 %%
 %% @doc Returns the default data for the specified FileName.
 %%
@@ -94,14 +95,14 @@ current_year() ->
 %%
 file_data(FileName) ->
     File = filename:join(?DEFAULTS_DIR, FileName),
-    case brt:read_app_file(priv, File) of
+    case rrp:read_app_file(priv, File) of
         {ok, Bin} ->
             Bin;
         {error, What} ->
             erlang:error(What)
     end.
 
--spec file_terms(FileName :: brt:fs_path()) -> [term()].
+-spec file_terms(FileName :: rrp:fs_path()) -> [term()].
 %%
 %% @doc Returns the default terms for the specified FileName.
 %%
@@ -110,7 +111,7 @@ file_data(FileName) ->
 %%
 file_terms(FileName) ->
     File = filename:join(?DEFAULTS_DIR, FileName),
-    case brt:consult_app_file(priv, File) of
+    case rrp:consult_app_file(priv, File) of
         {ok, Terms} ->
             Terms;
         {error, What} ->
@@ -128,11 +129,11 @@ editor_erlang() ->
         "-*- mode: erlang; erlang-indent-level: 4; indent-tabs-mode: nil -*-").
 
 -spec rebar_config(
-        AppName     :: brt:app_name(),
-        ProdDeps    :: [brt:app_name() | brt:dep_spec()],
-        TestDeps    :: [brt:app_name() | brt:dep_spec()],
-        PluginDeps  :: [brt:app_name() | brt:dep_spec()])
-        -> brt:rebar_conf().
+        AppName     :: rrp:app_name(),
+        ProdDeps    :: [rrp:app_name() | rrp:dep_spec()],
+        TestDeps    :: [rrp:app_name() | rrp:dep_spec()],
+        PluginDeps  :: [rrp:app_name() | rrp:dep_spec()])
+        -> rrp:rebar_conf().
 %%
 %% @doc Returns the Basho-standard rebar.config properties list.
 %%
@@ -148,11 +149,11 @@ editor_erlang() ->
 %%
 rebar_config(AppName, ProdDeps, TestDeps, PluginDeps) ->
     DefTerms = file_terms(?DEFAULT_REBAR_CONFIG),
-    CfgTerms = case brt:get_key_tuple(AppName,
-            brt:get_key_list(upstream, brt_config:config())) of
+    CfgTerms = case rrp:get_key_tuple(AppName,
+            rrp:get_key_list(upstream, rrp_config:config())) of
         {_, Elems} ->
-            BRTUp = {brt_upstream, Elems},
-            lists:keystore(brt_upstream, 1, DefTerms, BRTUp);
+            RRPUp = {rrp_upstream, Elems},
+            lists:keystore(rrp_upstream, 1, DefTerms, RRPUp);
         _ ->
             DefTerms
     end,
@@ -161,9 +162,9 @@ rebar_config(AppName, ProdDeps, TestDeps, PluginDeps) ->
     % override the `no_debug_info' pseudo option.
     % If it can't be overridden, don't let it in in the first place.
     %
-    Default = case brt_rebar:config_format() < 3 of
+    Default = case rrp_rebar:config_format() < 3 of
         true ->
-            Opts  = brt:get_key_list(erl_opts, CfgTerms),
+            Opts  = rrp:get_key_list(erl_opts, CfgTerms),
             case lists:member(no_debug_info, Opts) of
                 true ->
                     lists:keyreplace(erl_opts, 1, CfgTerms, {erl_opts,
@@ -176,26 +177,26 @@ rebar_config(AppName, ProdDeps, TestDeps, PluginDeps) ->
     end,
     AppDeps = lists:foldl(
         fun(AAppOrDep, AResult) ->
-            case brt:dep_list_member(AAppOrDep, AResult) of
+            case rrp:dep_list_member(AAppOrDep, AResult) of
                 true ->
                     AResult;
                 _ ->
-                    [brt_config:pkg_dep(AAppOrDep) | AResult]
+                    [rrp_config:pkg_dep(AAppOrDep) | AResult]
             end
         end, [], ProdDeps),
     TstDeps = lists:foldl(
         fun(TAppOrDep, TResult) ->
-            case brt:dep_list_member(TAppOrDep, TResult)
-                    orelse brt:dep_list_member(TAppOrDep, AppDeps) of
+            case rrp:dep_list_member(TAppOrDep, TResult)
+                    orelse rrp:dep_list_member(TAppOrDep, AppDeps) of
                 true ->
                     TResult;
                 _ ->
-                    [brt_config:pkg_dep(TAppOrDep) | TResult]
+                    [rrp_config:pkg_dep(TAppOrDep) | TResult]
             end
         end, [], TestDeps),
-    Plugins = brt_config:dep_plugins(TstDeps ++ AppDeps, PluginDeps),
-    ErlOpts = brt_config:dep_erl_opts(AppDeps,
-                brt:get_key_list(erl_opts, Default)),
+    Plugins = rrp_config:dep_plugins(TstDeps ++ AppDeps, PluginDeps),
+    ErlOpts = rrp_config:dep_erl_opts(AppDeps,
+                rrp:get_key_list(erl_opts, Default)),
     Config1 = update_profiles(Default, AppDeps, TstDeps, Plugins),
     Config2 = lists:keystore(plugins, 1, Config1, {plugins, Plugins}),
     Config3 = lists:keystore(erl_opts, 1, Config2, {erl_opts, ErlOpts}),
@@ -205,7 +206,7 @@ rebar_config(AppName, ProdDeps, TestDeps, PluginDeps) ->
 %% Internal
 %% ===================================================================
 
--spec copyright_year_string(Year :: brt:basho_year()) -> iolist().
+-spec copyright_year_string(Year :: rrp:basho_year()) -> iolist().
 copyright_year_string(current) ->
     erlang:integer_to_list(current_year());
 copyright_year_string(Year)
@@ -213,7 +214,7 @@ copyright_year_string(Year)
     erlang:integer_to_list(Year).
 
 -spec copyright_year_string(
-        First :: brt:basho_year(), Last :: brt:basho_year()) -> iolist().
+        First :: rrp:basho_year(), Last :: rrp:basho_year()) -> iolist().
 copyright_year_string(current, Year) ->
     copyright_year_string(current_year(), Year);
 copyright_year_string(Year, current) ->
@@ -253,33 +254,33 @@ make_copyright(Prefix, Years) ->
     [comment_line(Prefix, Line) || Line <- Lines].
 
 -spec update_profiles(
-        Config      :: brt:rebar_conf(),
-        ProdDeps    :: [brt:app_name() | brt:dep_spec()],
-        TestDeps    :: [brt:app_name() | brt:dep_spec()],
-        PluginDeps  :: [brt:app_name() | brt:dep_spec()])
-        -> brt:rebar_conf().
+        Config      :: rrp:rebar_conf(),
+        ProdDeps    :: [rrp:app_name() | rrp:dep_spec()],
+        TestDeps    :: [rrp:app_name() | rrp:dep_spec()],
+        PluginDeps  :: [rrp:app_name() | rrp:dep_spec()])
+        -> rrp:rebar_conf().
 
 update_profiles(Config, ProdDeps, TestDeps, PluginDeps) ->
-    ProfIn  = brt:get_key_list(profiles, Config),
+    ProfIn  = rrp:get_key_list(profiles, Config),
     ProfOut = update_profiles(
         ProfIn, Config, ProdDeps, TestDeps, PluginDeps, []),
     lists:keystore(profiles, 1, Config, {profiles, ProfOut}).
 
 -spec update_profiles(
-        Sects       :: [brt:rebar_sect()],
-        Config      :: brt:rebar_conf(),
-        ProdDeps    :: [brt:app_name() | brt:dep_spec()],
-        TestDeps    :: [brt:app_name() | brt:dep_spec()],
-        PluginDeps  :: [brt:app_name() | brt:dep_spec()],
-        Result      :: [brt:rebar_sect()])
-        -> [brt:rebar_sect()].
+        Sects       :: [rrp:rebar_sect()],
+        Config      :: rrp:rebar_conf(),
+        ProdDeps    :: [rrp:app_name() | rrp:dep_spec()],
+        TestDeps    :: [rrp:app_name() | rrp:dep_spec()],
+        PluginDeps  :: [rrp:app_name() | rrp:dep_spec()],
+        Result      :: [rrp:rebar_sect()])
+        -> [rrp:rebar_sect()].
 
 update_profiles(
         [{check = Sect, Terms0} | Sects],
         Config, ProdDeps, TestDeps, PluginDeps, Result) ->
-    Over0   = brt:get_key_list(overrides, Terms0),
+    Over0   = rrp:get_key_list(overrides, Terms0),
     Over1   = [{add, Pkg, [{erl_opts, [debug_info]}]}
-        || Pkg <- lists:map(fun brt:dep_name/1, ProdDeps)],
+        || Pkg <- lists:map(fun rrp:dep_name/1, ProdDeps)],
     Over2   = lists:usort(Over0 ++ Over1),
     Terms1  = lists:keystore(overrides, 1, Terms0, {overrides, Over2}),
     Update  = {Sect, lists:keysort(1, Terms1)},
@@ -289,12 +290,12 @@ update_profiles(
 update_profiles(
         [{test = Sect, Terms0} | Sects],
         Config, ProdDeps, TestDeps, PluginDeps, Result) ->
-    Deps0   = brt:get_key_list(deps, Terms0),
+    Deps0   = rrp:get_key_list(deps, Terms0),
     Deps1   = lists:keymerge(1, lists:sort(Deps0), lists:sort(TestDeps)),
     Terms1  = lists:keystore(deps, 1, Terms0, {deps, Deps1}),
-    Opts0   = brt:get_key_list(erl_opts, Terms1),
-    Opts1   = brt_config:dep_erl_opts(TestDeps, Opts0),
-    Opts2   = lists:subtract(Opts1, brt:get_key_list(erl_opts, Config)),
+    Opts0   = rrp:get_key_list(erl_opts, Terms1),
+    Opts1   = rrp_config:dep_erl_opts(TestDeps, Opts0),
+    Opts2   = lists:subtract(Opts1, rrp:get_key_list(erl_opts, Config)),
     Terms2  = lists:keystore(erl_opts, 1, Terms1, {erl_opts, Opts2}),
     Update  = {Sect, lists:keysort(1, Terms2)},
     update_profiles(

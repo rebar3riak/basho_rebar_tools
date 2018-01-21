@@ -1,5 +1,6 @@
 %% -------------------------------------------------------------------
 %%
+%% Copyright (c) 2018 Rebar3Riak Contributors
 %% Copyright (c) 2016-2017 Basho Technologies, Inc.
 %%
 %% This file is provided to you under the Apache License,
@@ -19,20 +20,20 @@
 %% -------------------------------------------------------------------
 
 %%
-%% @doc BRT provider for the `brt-info' command.
+%% @doc RRP provider for the `rrp-info' command.
 %%
--module(brt_prv_info).
+-module(rrp_prv_info).
 
 %% provider behavior
--ifndef(BRT_VALIDATE).
--behaviour(brt).
+-ifndef(RRP_VALIDATE).
+-behaviour(rrp).
 -endif.
 -export([do/1, format_error/1, spec/0]).
 
--include("brt.hrl").
+-include("rrp.hrl").
 
--define(PROVIDER_ATOM,  'brt-info').
--define(PROVIDER_STR,   "brt-info").
+-define(PROVIDER_ATOM,  'rrp-info').
+-define(PROVIDER_STR,   "rrp-info").
 -define(PROVIDER_DEPS,  []).
 -define(PROVIDER_OPTS,  []).
 
@@ -40,19 +41,19 @@
 %% Behavior
 %% ===================================================================
 
--spec do(State :: brt:rebar_state()) -> {ok, brt:rebar_state()}.
+-spec do(State :: rrp:rebar_state()) -> {ok, rrp:rebar_state()}.
 %%
 %% @doc Display provider information.
 %%
 do(State) ->
-    {brt_io:write_info(standard_io), State}.
+    {rrp_io:write_info(standard_io), State}.
 
 -spec format_error(Error :: term()) -> iolist().
 %%
 %% @doc Placeholder to fill out the `provider' API, should never be called.
 %%
 format_error(Error) ->
-    brt:format_error(Error).
+    rrp:format_error(Error).
 
 -spec spec() -> [{atom(), term()}].
 %%

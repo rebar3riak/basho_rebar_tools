@@ -1,5 +1,6 @@
 %% -------------------------------------------------------------------
 %%
+%% Copyright (c) 2018 Rebar3Riak Contributors
 %% Copyright (c) 2016-2017 Basho Technologies, Inc.
 %%
 %% This file is provided to you under the Apache License,
@@ -22,7 +23,7 @@
 %% @doc This module performs operations using the
 %%      <a href="http://developer.github.com/v3/">GitHub HTTP API</a>.
 %%
--module(brt_github).
+-module(rrp_github).
 
 % API
 -export([
@@ -33,7 +34,7 @@
     commit/0
 ]).
 
--include("brt.hrl").
+-include("rrp.hrl").
 
 -type commit_info() ::  {sha,       git_hash()}
                     |   {time,      timestamp()}
@@ -63,7 +64,7 @@
 
 -spec branch_head(
     Owner :: path_seg(), Repo :: path_seg(), Branch :: path_seg())
-        -> commit() | brt:err_result().
+        -> commit() | rrp:err_result().
 %%
 %% @doc Returns information about the latest commit on the specified branch.
 %%
@@ -78,23 +79,23 @@
 %%
 branch_head(Owner, Repo, Branch) ->
     URL = lists:flatten([
-        ?GH_API, "/repos/", brt:to_string(Owner), $/, brt:to_string(Repo),
-        "/branches/", brt:to_string(Branch)
+        ?GH_API, "/repos/", rrp:to_string(Owner), $/, rrp:to_string(Repo),
+        "/branches/", rrp:to_string(Branch)
     ]),
     case gh_api_get(URL) of
         {ok, _, Body} ->
-            Commit  = brt:get_key_list(commit, Body),
-            Detail  = brt:get_key_list(commit, Commit),
-            User    = brt:get_key_list(committer, Commit),
-            History = brt:get_key_list(committer, Detail),
+            Commit  = rrp:get_key_list(commit, Body),
+            Detail  = rrp:get_key_list(commit, Commit),
+            User    = rrp:get_key_list(committer, Commit),
+            History = rrp:get_key_list(committer, Detail),
             [
-                brt:get_key_tuple(email, History),
-                brt:get_key_tuple(message, Detail),
-                brt:get_key_tuple(name, History),
-                brt:get_key_tuple(sha, Commit),
-                {time, brt:get_key_value(date, History)},
-                {user, brt:get_key_value(login, User)},
-                {userid, brt:get_key_value(id, User)}
+                rrp:get_key_tuple(email, History),
+                rrp:get_key_tuple(message, Detail),
+                rrp:get_key_tuple(name, History),
+                rrp:get_key_tuple(sha, Commit),
+                {time, rrp:get_key_value(date, History)},
+                {user, rrp:get_key_value(login, User)},
+                {userid, rrp:get_key_value(id, User)}
             ];
         GetErr ->
             GetErr
@@ -104,7 +105,7 @@ branch_head(Owner, Repo, Branch) ->
 %% GitHub Operations
 %% ===================================================================
 
--spec gh_api_get(URL :: string()) -> {ok, head(), body()} | brt:err_result().
+-spec gh_api_get(URL :: string()) -> {ok, head(), body()} | rrp:err_result().
 %
 % Perform an HTTP GET on the specified URL using the default MediaType.
 %
@@ -112,7 +113,7 @@ gh_api_get(URL) ->
     gh_api_get(URL, "application/vnd.github.loki-preview+json").
 
 -spec gh_api_get(URL :: string(), MediaType :: string())
-        -> {ok, head(), body()} | brt:err_result().
+        -> {ok, head(), body()} | rrp:err_result().
 %
 % Perform an HTTP GET on the specified URL using the specified MediaType.
 %

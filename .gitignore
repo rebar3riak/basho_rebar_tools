@@ -28,6 +28,6 @@
 .project
 .settings/
 .tm_properties
-Makefile
+/Makefile
 erln8.config
 tmp/

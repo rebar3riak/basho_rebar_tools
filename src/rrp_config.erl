@@ -1,5 +1,6 @@
 %% -------------------------------------------------------------------
 %%
+%% Copyright (c) 2018 Rebar3Riak Contributors
 %% Copyright (c) 2016-2017 Basho Technologies, Inc.
 %%
 %% This file is provided to you under the Apache License,
@@ -18,7 +19,7 @@
 %%
 %% -------------------------------------------------------------------
 
--module(brt_config).
+-module(rrp_config).
 
 % API
 -export([
@@ -41,21 +42,21 @@
     state/0
 ]).
 
--include("brt.hrl").
+-include("rrp.hrl").
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
 -endif.
 
 -record(saved, {
-    file    :: brt:fs_path(),
+    file    :: rrp:fs_path(),
     conf    :: config()
 }).
 
 -type state()   ::  #saved{}.
 -type config()  ::  [{atom(), term()}].
 
--define(DEFAULT_CONFIG_FILE,    "brt.config").
--define(OS_ENV_CONFIG_FILE,     "BRT_CONFIG").
+-define(DEFAULT_CONFIG_FILE,    "rrp.config").
+-define(OS_ENV_CONFIG_FILE,     "RRP_CONFIG").
 
 -define(CONFIG_TERMS_KEY,       {?MODULE, terms}).
 -define(CONFIG_TERMS(),         erlang:get(?CONFIG_TERMS_KEY)).
@@ -65,9 +66,9 @@
 -define(CONFIG_FILE(),          erlang:get(?CONFIG_FILE_KEY)).
 -define(CONFIG_FILE(New),       erlang:put(?CONFIG_FILE_KEY, New)).
 
--define(BRT_CFG_NAMES_KEY,      {?MODULE, brt_config_names}).
--define(BRT_CFG_NAMES(),        erlang:get(?BRT_CFG_NAMES_KEY)).
--define(BRT_CFG_NAMES(New),     erlang:put(?BRT_CFG_NAMES_KEY, New)).
+-define(RRP_CFG_NAMES_KEY,      {?MODULE, rrp_config_names}).
+-define(RRP_CFG_NAMES(),        erlang:get(?RRP_CFG_NAMES_KEY)).
+-define(RRP_CFG_NAMES(New),     erlang:put(?RRP_CFG_NAMES_KEY, New)).
 
 %
 % Implementation Notes:
@@ -76,7 +77,7 @@
 %   silently returns the default if there's a matching tuple with other than
 %   2 elements, so a munged up element might not be flagged as such.
 %
-%   Instead, brt:get_key_list/2, brt:get_key_tuple/2, and brt:get_key_value/2
+%   Instead, rrp:get_key_list/2, rrp:get_key_tuple/2, and rrp:get_key_value/2
 %   are used, ensuring that we'll fail on bogus data.
 %
 
@@ -91,7 +92,7 @@
 config() ->
     ?CONFIG_TERMS().
 
--spec config_file() -> brt:fs_path() | undefined.
+-spec config_file() -> rrp:fs_path() | undefined.
 %%
 %% @doc Returns the file from which the initial configuration was loaded.
 %%
@@ -99,7 +100,7 @@ config_file() ->
     ?CONFIG_FILE().
 
 -spec dep_erl_opts(
-        Deps    :: [brt:app_name() | brt:dep_spec()],
+        Deps    :: [rrp:app_name() | rrp:dep_spec()],
         Opts    :: [atom() | tuple()])
         -> [atom() | tuple()].
 %%
@@ -107,12 +108,12 @@ config_file() ->
 %%
 dep_erl_opts(Deps, Opts) ->
     dep_erl_opts(Deps, Opts,
-        brt:get_key_list(dep_erl_opts, ?CONFIG_TERMS())).
+        rrp:get_key_list(dep_erl_opts, ?CONFIG_TERMS())).
 
 -spec dep_plugins(
-        Deps    :: [brt:app_name() | brt:dep_spec()],
-        Plugins :: [brt:dep_spec()])
-        -> [brt:dep_spec()].
+        Deps    :: [rrp:app_name() | rrp:dep_spec()],
+        Plugins :: [rrp:dep_spec()])
+        -> [rrp:dep_spec()].
 %%
 %% @doc Returns Plugins with rebar plugins needed by Deps included.
 %%
@@ -120,16 +121,16 @@ dep_erl_opts(Deps, Opts) ->
 %%
 dep_plugins(Deps, Plugins) ->
     Config  = ?CONFIG_TERMS(),
-    Conf    = brt:get_key_list(dep_plugins, Config),
-    Raw     = brt:get_key_list(raw, Config),
-    case brt:dep_list_member(?APP_NAME_ATOM, Plugins) of
+    Conf    = rrp:get_key_list(dep_plugins, Config),
+    Raw     = rrp:get_key_list(raw, Config),
+    case rrp:dep_list_member(?APP_NAME_ATOM, Plugins) of
         true ->
             dep_plugins(Deps, Plugins, Conf, Raw);
         _ ->
             dep_plugins(Deps, [?APP_NAME_ATOM | Plugins], Conf, Raw)
     end.
 
--spec init() -> ok | brt:err_result().
+-spec init() -> ok | rrp:err_result().
 %%
 %% @doc Initializes the runtime configuration.
 %%
@@ -137,7 +138,7 @@ init() ->
     {ok, CWD} = file:get_cwd(),
     init([CWD]).
 
--spec init(Dirs :: [file:name()]) -> ok | brt:err_result().
+-spec init(Dirs :: [file:name()]) -> ok | rrp:err_result().
 %%
 %% @doc Initializes the runtime configuration.
 %%
@@ -149,25 +150,25 @@ init(Dirs) ->
         Val ->
             [Val, DefaultFile]
     end,
-    ?BRT_CFG_NAMES(FileNames),
-    case init(Dirs, brt_defaults:file_terms(DefaultFile)) of
+    ?RRP_CFG_NAMES(FileNames),
+    case init(Dirs, rrp_defaults:file_terms(DefaultFile)) of
         ok ->
-            brt_rebar:init();
+            rrp_rebar:init();
         Err ->
             Err
     end.
 
--spec merge(AppDir :: brt:fs_path())
-        -> {ok, state()} | brt:err_result().
+-spec merge(AppDir :: rrp:fs_path())
+        -> {ok, state()} | rrp:err_result().
 %%
-%% @doc Merges the BRT config file from Dir, if any, and returns a reset object.
+%% @doc Merges the RRP config file from Dir, if any, and returns a reset object.
 %%
 %% The state before the call can be restored by calling reset/1.
 %%
 merge(Dir) ->
     Config  = config(),
     State   = #saved{file = config_file(), conf = Config},
-    Exclude = brt:get_key_list(no_inherit, Config),
+    Exclude = rrp:get_key_list(no_inherit, Config),
     Inherit = lists:filter(
         fun({Key, _}) -> not lists:member(Key, Exclude) end, Config),
     case config_file(Dir) of
@@ -181,45 +182,45 @@ merge(Dir) ->
                     ?CONFIG_FILE(File),
                     {ok, State};
                 {error, What} ->
-                    brt:file_error(File, What)
+                    rrp:file_error(File, What)
             end
     end.
 
--spec overwrite_blocked(File :: brt:fs_path()) -> boolean().
+-spec overwrite_blocked(File :: rrp:fs_path()) -> boolean().
 %%
 %% @doc Reports whether automated overwrite of the specified file is blocked.
 %%
 overwrite_blocked(File) ->
-    % At present, the `brt.protect' flag is recognized, but that's deprecated.
-    % `brt_protect == true` is the preferred pattern, allowing it to be a
-    % simple attribute at the top of the file, while the meatier BRT stuff is
+    % At present, the `rrp.protect' flag is recognized, but that's deprecated.
+    % `rrp_protect == true` is the preferred pattern, allowing it to be a
+    % simple attribute at the top of the file, while the meatier RRP stuff is
     % stashed at the end.
     case file:consult(File) of
         {ok, Terms} ->
-            proplists:get_value(brt_protect, Terms, false) orelse
-            proplists:get_value(protect, brt:get_key_list(brt, Terms), false);
+            proplists:get_value(rrp_protect, Terms, false) orelse
+            proplists:get_value(protect, rrp:get_key_list(rrp, Terms), false);
         _ ->
             false
     end.
 
--spec pkg_dep(Package :: brt:app_name() | brt:dep_spec()) -> brt:dep_spec().
+-spec pkg_dep(Package :: rrp:app_name() | rrp:dep_spec()) -> rrp:dep_spec().
 %%
 %% @doc Returns a package's dependency specification.
 %%
 pkg_dep(PkgSpec) when ?is_rebar_dep(PkgSpec) ->
     PkgSpec;
 pkg_dep(PkgName) ->
-    get_pkg_dep(?CONFIG_TERMS(), brt:to_atom(PkgName)).
+    get_pkg_dep(?CONFIG_TERMS(), rrp:to_atom(PkgName)).
 
 -spec pkg_dep(
-        Package :: brt:app_name(), Spec :: brt:rsrc_spec() | brt:dep_spec())
-        -> brt:dep_spec().
+        Package :: rrp:app_name(), Spec :: rrp:rsrc_spec() | rrp:dep_spec())
+        -> rrp:dep_spec().
 %%
 %% @doc Stores a package's dependency specification override.
 %%
 pkg_dep(Package, Spec)
         when erlang:is_tuple(Spec) andalso erlang:tuple_size(Spec) > 1 ->
-    PkgName = brt:to_atom(Package),
+    PkgName = rrp:to_atom(Package),
     DepSpec = case erlang:element(1, Spec) of
         PkgName ->
             Spec;
@@ -227,7 +228,7 @@ pkg_dep(Package, Spec)
             {PkgName, Spec}
     end,
     OldConf = ?CONFIG_TERMS(),
-    OldDeps = brt:get_key_list(deps, OldConf),
+    OldDeps = rrp:get_key_list(deps, OldConf),
     NewDeps = lists:keystore(PkgName, 1, OldDeps, DepSpec),
     NewConf = lists:keystore(deps, 1, OldConf, {deps, NewDeps}),
     ?CONFIG_TERMS(NewConf),
@@ -236,13 +237,13 @@ pkg_dep(Package, Spec) ->
     erlang:error(badarg, [Package, Spec]).
 
 -spec pkg_repo(
-    Package :: brt:app_name(), Repo :: brt:app_name() | brt:dep_loc())
-        -> {brt:app_name(), brt:app_name() | brt:dep_loc()}.
+    Package :: rrp:app_name(), Repo :: rrp:app_name() | rrp:dep_loc())
+        -> {rrp:app_name(), rrp:app_name() | rrp:dep_loc()}.
 %%
 %% @doc Stores a package's repository override.
 %%
 pkg_repo(Package, Repo) ->
-    PkgName = brt:to_atom(Package),
+    PkgName = rrp:to_atom(Package),
     PkgRepo = case Repo of
         Atom when erlang:is_atom(Atom) ->
             {PkgName, Atom};
@@ -258,20 +259,20 @@ pkg_repo(Package, Repo) ->
             erlang:error(badarg, [Package, Repo])
     end,
     OldConf = ?CONFIG_TERMS(),
-    OldReps = brt:get_key_list(repos, OldConf),
+    OldReps = rrp:get_key_list(repos, OldConf),
     NewReps = lists:keystore(PkgName, 1, OldReps, PkgRepo),
     NewConf = lists:keystore(repos, 1, OldConf, {repos, NewReps}),
     ?CONFIG_TERMS(NewConf),
     PkgRepo.
 
--spec pkg_version(Package :: brt:app_name(), Version :: brt:dep_vsn())
-        -> {brt:app_name(), {atom(), string()}}.
+-spec pkg_version(Package :: rrp:app_name(), Version :: rrp:dep_vsn())
+        -> {rrp:app_name(), {atom(), string()}}.
 %%
 %% @doc Stores a package's version override.
 %%
 pkg_version(Package, {Type, Label} = Version)
         when erlang:is_atom(Type) andalso erlang:is_list(Label) ->
-    PkgName = brt:to_atom(Package),
+    PkgName = rrp:to_atom(Package),
     FlatVsn = lists:flatten(Label),
     PkgVers = case io_lib:char_list(FlatVsn) of
         true ->
@@ -280,7 +281,7 @@ pkg_version(Package, {Type, Label} = Version)
             erlang:error(badarg, [Package, Version])
     end,
     OldConf = ?CONFIG_TERMS(),
-    OldVers = brt:get_key_list(versions, OldConf),
+    OldVers = rrp:get_key_list(versions, OldConf),
     NewVers = lists:keystore(PkgName, 1, OldVers, PkgVers),
     NewConf = lists:keystore(versions, 1, OldConf, {versions, NewVers}),
     ?CONFIG_TERMS(NewConf),
@@ -292,7 +293,7 @@ pkg_version(Package, Version) ->
 
 -spec reset(State :: state()) -> ok.
 %%
-%% @doc Restores the BRT state returned by a previous merge/1 call.
+%% @doc Restores the RRP state returned by a previous merge/1 call.
 %%
 reset(#saved{file = File, conf = Conf}) ->
     ?CONFIG_FILE(File),
@@ -303,12 +304,12 @@ reset(#saved{file = File, conf = Conf}) ->
 %% Internal
 %% ===================================================================
 
--spec config_file(Dir :: brt:fs_path()) -> brt:fs_path() | false.
+-spec config_file(Dir :: rrp:fs_path()) -> rrp:fs_path() | false.
 config_file(Dir) ->
-    config_file(?BRT_CFG_NAMES(), Dir).
+    config_file(?RRP_CFG_NAMES(), Dir).
 
--spec config_file(Names :: [brt:fs_path()], Dir :: brt:fs_path())
-        -> brt:fs_path() | false.
+-spec config_file(Names :: [rrp:fs_path()], Dir :: rrp:fs_path())
+        -> rrp:fs_path() | false.
 config_file([Name | Names], Dir) ->
     File = filename:absname(Name, Dir),
     case filelib:is_regular(File) of
@@ -321,13 +322,13 @@ config_file([], _) ->
     false.
 
 -spec dep_erl_opts(
-        Deps    :: [brt:app_name() | brt:dep_spec()],
+        Deps    :: [rrp:app_name() | rrp:dep_spec()],
         Opts    :: [atom() | tuple()],
-        Conf    :: [{brt:app_name(), [atom() | tuple()]}])
+        Conf    :: [{rrp:app_name(), [atom() | tuple()]}])
         -> [atom() | tuple()].
 
 dep_erl_opts([AppName | Deps], Opts, Conf) when ?is_app_name(AppName) ->
-    case brt:get_key_list(AppName, Conf) of
+    case rrp:get_key_list(AppName, Conf) of
         [] ->
             dep_erl_opts(Deps, Opts, Conf);
         Add ->
@@ -344,14 +345,14 @@ dep_erl_opts([], Opts, _) ->
     lists:usort(Opts).
 
 -spec dep_plugins(
-        Deps    :: [brt:app_name() | brt:dep_spec()],
-        Plugins :: [brt:dep_spec()],
-        Conf    :: [{brt:app_name(), [brt:app_name()]}],
-        Raw     :: [brt:app_name()])
-        -> [brt:dep_spec()].
+        Deps    :: [rrp:app_name() | rrp:dep_spec()],
+        Plugins :: [rrp:dep_spec()],
+        Conf    :: [{rrp:app_name(), [rrp:app_name()]}],
+        Raw     :: [rrp:app_name()])
+        -> [rrp:dep_spec()].
 
 dep_plugins([AppName | Deps], Plugins, Conf, Raw) when ?is_app_name(AppName) ->
-    AppConf = brt:get_key_list(AppName, Conf),
+    AppConf = rrp:get_key_list(AppName, Conf),
     RawConf = case lists:member(AppName, Raw)
             andalso not lists:member(rebar_raw_resource, AppConf) of
         true ->
@@ -361,7 +362,7 @@ dep_plugins([AppName | Deps], Plugins, Conf, Raw) when ?is_app_name(AppName) ->
     end,
     Next = lists:foldl(
         fun(Dep, Result) ->
-            case brt:dep_list_member(Dep, Result) of
+            case rrp:dep_list_member(Dep, Result) of
                 true ->
                     Result;
                 _ ->
@@ -375,7 +376,7 @@ dep_plugins([DepSpec | Deps], Plugins, Conf, Raw) when ?is_rebar_dep(DepSpec)
         andalso erlang:tuple_size(erlang:element(2, DepSpec)) > 1
         andalso erlang:element(1, erlang:element(2, DepSpec)) =:= raw ->
     NextDeps = [erlang:element(1, DepSpec) | Deps],
-    case brt:dep_list_member(rebar_raw_resource, Plugins) of
+    case rrp:dep_list_member(rebar_raw_resource, Plugins) of
         true ->
             dep_plugins(NextDeps, Plugins, Conf, Raw);
         _ ->
@@ -389,18 +390,18 @@ dep_plugins([Dep | _], _, _, _) ->
     erlang:error(badarg, [Dep]);
 
 dep_plugins([], Plugins, _, _) ->
-    lists:sort(brt:dep_list(Plugins)).
+    lists:sort(rrp:dep_list(Plugins)).
 
--spec get_pkg_dep(Config :: config(), Package :: brt:app_name())
-        -> brt:dep_spec().
+-spec get_pkg_dep(Config :: config(), Package :: rrp:app_name())
+        -> rrp:dep_spec().
 get_pkg_dep(Config, Package) ->
-    case brt:get_key_tuple(Package, brt:get_key_list(deps, Config)) of
+    case rrp:get_key_tuple(Package, rrp:get_key_list(deps, Config)) of
         undefined ->
             Spec = {
-                brt:get_key_value(default_repo_type, Config),
+                rrp:get_key_value(default_repo_type, Config),
                 get_pkg_repo(Config, Package),
                 get_pkg_version(Config, Package)},
-            case lists:member(Package, brt:get_key_list(raw, Config)) of
+            case lists:member(Package, rrp:get_key_list(raw, Config)) of
                 true ->
                     {Package, {raw, Spec}};
                 _ ->
@@ -410,31 +411,31 @@ get_pkg_dep(Config, Package) ->
             Dep
     end.
 
--spec get_pkg_repo(Config :: config(), Package :: brt:app_name())
-        -> brt:dep_loc().
+-spec get_pkg_repo(Config :: config(), Package :: rrp:app_name())
+        -> rrp:dep_loc().
 get_pkg_repo(Config, Package) ->
-    case brt:get_key_tuple(Package, brt:get_key_list(repos, Config)) of
+    case rrp:get_key_tuple(Package, rrp:get_key_list(repos, Config)) of
         undefined ->
             lists:flatten(io_lib:format(
-                brt:get_key_value(default_repo_format, Config), [Package]));
+                rrp:get_key_value(default_repo_format, Config), [Package]));
         {_, Target} when erlang:is_atom(Target) ->
             get_pkg_repo(Config, Target);
         {_, Repo} ->
             Repo
     end.
 
--spec get_pkg_version(Config :: config(), Package :: brt:app_name())
-        -> brt:dep_vsn().
+-spec get_pkg_version(Config :: config(), Package :: rrp:app_name())
+        -> rrp:dep_vsn().
 get_pkg_version(Config, Package) ->
-    case brt:get_key_tuple(Package, brt:get_key_list(versions, Config)) of
+    case rrp:get_key_tuple(Package, rrp:get_key_list(versions, Config)) of
         undefined ->
-            brt:get_key_value(default_repo_version, Config);
+            rrp:get_key_value(default_repo_version, Config);
         {_, Vsn} ->
             Vsn
     end.
 
--spec init(Dirs :: [brt:fs_path()], Defaults :: list())
-        -> ok | brt:err_result().
+-spec init(Dirs :: [rrp:fs_path()], Defaults :: list())
+        -> ok | rrp:err_result().
 
 init([Dir | Dirs], Defaults) ->
     case config_file(Dir) of
@@ -447,7 +448,7 @@ init([Dir | Dirs], Defaults) ->
                     ?CONFIG_TERMS(merge(Defaults, Config)),
                     ok;
                 {error, What} ->
-                    brt:file_error(File, What)
+                    rrp:file_error(File, What)
             end
     end;
 
@@ -458,7 +459,7 @@ init([], Defaults) ->
 -spec merge(Defaults :: config(), Config :: config()) -> config().
 
 merge(Defaults, Config) ->
-    Nested  = brt:get_key_list(nested_merge_sects, Defaults),
+    Nested  = rrp:get_key_list(nested_merge_sects, Defaults),
     merge_terms(Config, Defaults, Nested).
 
 -spec merge_terms(Terms :: config(), Result :: list(), Nested :: [term()])
@@ -517,7 +518,7 @@ merge_list([], Result) ->
 default_config_test() ->
 
     % this file should always be found
-    Terms = brt_defaults:file_terms(?DEFAULT_CONFIG_FILE),
+    Terms = rrp_defaults:file_terms(?DEFAULT_CONFIG_FILE),
     ?assertMatch([_|_], Terms),
 
     % default should always be a branch

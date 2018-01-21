@@ -1,5 +1,6 @@
 %% -------------------------------------------------------------------
 %%
+%% Copyright (c) 2018 Rebar3Riak Contributors
 %% Copyright (c) 2017 Basho Technologies, Inc.
 %%
 %% This file is provided to you under the Apache License,
@@ -25,14 +26,14 @@
 %% change the state seen by subsequent tasks, so we do it globally at
 %% initialization.
 %%
--module(brt_inject_state).
+-module(rrp_inject_state).
 
 % Private API
 -export([
     inject/1
 ]).
 
--include("brt.hrl").
+-include("rrp.hrl").
 
 -type define()  :: atom() | {atom(), term()}.
 
@@ -51,7 +52,7 @@
 %% Private API
 %% ===================================================================
 
--spec inject(State :: brt:rebar_state()) -> brt:rebar_state().
+-spec inject(State :: rrp:rebar_state()) -> rrp:rebar_state().
 %% @private
 %% @doc Inject whatever changes we need into the State.
 %%
@@ -62,7 +63,7 @@ inject(State) ->
 %% Internal
 %% ===================================================================
 
--spec inject(Target :: #tgt{}, State :: brt:rebar_state()) -> brt:rebar_state().
+-spec inject(Target :: #tgt{}, State :: rrp:rebar_state()) -> rrp:rebar_state().
 %
 % Default is to add `{d, <uppercase-App>}' to `erl_opts' in Profile if the App is
 % present. If that element is already present in State, the test is skipped.
@@ -72,7 +73,7 @@ inject(State) ->
 inject(Target, State) ->
     % ?LOG_DEBUG("~s:inject(~p, State).", [?MODULE, Target]),
     Tgt = expand_defaults(Target),
-    Opts = brt:get_key_list(erl_opts, get_profile(Tgt#tgt.profile, State)),
+    Opts = rrp:get_key_list(erl_opts, get_profile(Tgt#tgt.profile, State)),
     case lists:all(fun(Def) -> lists:member(Def, Opts) end, Tgt#tgt.define) of
         true ->
             State;
@@ -80,7 +81,7 @@ inject(Target, State) ->
             inject_target(Tgt, State)
     end.
 
--spec inject_target(Tgt :: #tgt{}, State :: brt:rebar_state()) -> brt:rebar_state().
+-spec inject_target(Tgt :: #tgt{}, State :: rrp:rebar_state()) -> rrp:rebar_state().
 %
 % Default is to look for a header file with the app's name as part of the test.
 % When the test is positive, `{d, <uppercase-Target>}' is added to `erl_opts' in Profile.
@@ -118,7 +119,7 @@ inject_target(Tgt, State) ->
 % Fill in the blanks ...
 %
 expand_defaults(#tgt{app = App, define = default} = Tgt) ->
-    expand_defaults(Tgt#tgt{define = [brt:to_atom(string:to_upper(brt:to_string(App)))]});
+    expand_defaults(Tgt#tgt{define = [rrp:to_atom(string:to_upper(rrp:to_string(App)))]});
 
 expand_defaults(#tgt{define = Def} = Tgt) when not erlang:is_list(Def) ->
     expand_defaults(Tgt#tgt{define = [Def]});
@@ -147,7 +148,7 @@ expand_defaults(#tgt{define = Macros} = Tgt) ->
         end, Macros),
     Tgt#tgt{define = Defs}.
 
--spec get_profile(Name :: atom(), State :: brt:rebar_state()) -> list().
+-spec get_profile(Name :: atom(), State :: rrp:rebar_state()) -> list().
 %
 % Returns the Named profile from State.
 %
@@ -158,11 +159,11 @@ get_profile(Name, State) ->
         undefined ->
             [];
         Profs ->
-            brt:get_key_list(Name, Profs)
+            rrp:get_key_list(Name, Profs)
     end.
 
--spec set_profile(Name :: atom(), Value :: list(), State :: brt:rebar_state())
-        -> brt:rebar_state().
+-spec set_profile(Name :: atom(), Value :: list(), State :: rrp:rebar_state())
+        -> rrp:rebar_state().
 %
 % Updates the Named profile in State and returns the new State.
 %
@@ -175,7 +176,7 @@ set_profile(Name, Value, State) ->
     end,
     rebar_state:set(State, profiles, Profiles).
 
--spec set_target_opts(Tgt :: #tgt{}, State :: brt:rebar_state()) -> brt:rebar_state().
+-spec set_target_opts(Tgt :: #tgt{}, State :: rrp:rebar_state()) -> rrp:rebar_state().
 %
 % Add the appropriate options to the target profile.
 % At this point whatever predicates apply have passed.
@@ -196,13 +197,13 @@ set_target_opts(#tgt{app = eqc = Mod, define = Defs} = Tgt, State) ->
             V3 = erlang:trunc(R2 * 10),
             [V1, V2, V3];
         SVsn ->
-            brt:parse_version(SVsn)
+            rrp:parse_version(SVsn)
     end,
     NewDefs = if
         % Assume breaking API changes if we ever see a major version > 1.
         Maj > 1 ->
             ?LOG_WARN("EQC version ~p may not be handled properly!", [Vsn]),
-            Def = brt:to_atom(io_lib:format("EQC_API_~b", [Maj])),
+            Def = rrp:to_atom(io_lib:format("EQC_API_~b", [Maj])),
             [{d, Def} | Defs];
 
         % Lots of API changes at version 1.35.x.
@@ -218,8 +219,8 @@ set_target_opts(#tgt{app = eqc = Mod, define = Defs} = Tgt, State) ->
 set_target_opts(Tgt, State) ->
     set_target_opts_final(Tgt, State).
 
--spec set_target_opts_final(Tgt :: #tgt{}, State :: brt:rebar_state())
-        -> brt:rebar_state().
+-spec set_target_opts_final(Tgt :: #tgt{}, State :: rrp:rebar_state())
+        -> rrp:rebar_state().
 %
 % Add the specified options to the target profile.
 %
@@ -237,6 +238,6 @@ set_target_opts_final(#tgt{profile = Profile, define = Defs}, State) ->
                     % error, not the one that was already there.
                     lists:append(OptsIn, [Def])
             end
-        end, brt:get_key_list(erl_opts, Orig), Defs),
+        end, rrp:get_key_list(erl_opts, Orig), Defs),
     NewProf = lists:keystore(erl_opts, 1, Orig, {erl_opts, Opts}),
     set_profile(Profile, NewProf, State).

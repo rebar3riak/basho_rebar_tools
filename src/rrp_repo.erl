@@ -1,5 +1,6 @@
 %% -------------------------------------------------------------------
 %%
+%% Copyright (c) 2018 Rebar3Riak Contributors
 %% Copyright (c) 2016-2017 Basho Technologies, Inc.
 %%
 %% This file is provided to you under the Apache License,
@@ -18,7 +19,7 @@
 %%
 %% -------------------------------------------------------------------
 
--module(brt_repo).
+-module(rrp_repo).
 
 % API
 -export([
@@ -38,14 +39,14 @@
     year/0
 ]).
 
--include("brt.hrl").
+-include("rrp.hrl").
 
--type dir()         ::  brt:fs_path().
--type file()        ::  brt:fs_path().
--type repo()        ::  brt:fs_path().
+-type dir()         ::  rrp:fs_path().
+-type file()        ::  rrp:fs_path().
+-type repo()        ::  rrp:fs_path().
 -type version()     ::  {vsn_type(), string()}.
 -type vsn_type()    ::  branch | tag | ref.
--type year()        ::  brt:year1970().
+-type year()        ::  rrp:year1970().
 
 -define(GIT_MIN_VSN,    [2, 0]).
 
@@ -54,7 +55,7 @@
 %% ===================================================================
 
 -spec added_year(AppFile :: file(), Default :: term() | year())
-        -> year() | term() | brt:err_result().
+        -> year() | term() | rrp:err_result().
 %%
 %% @doc Return the year the specified file was first added to the repo.
 %%
@@ -84,7 +85,7 @@ added_year(AppFile, Default) ->
             end
     end.
 
--spec branch(Repo :: repo()) -> version() | brt:err_result().
+-spec branch(Repo :: repo()) -> version() | rrp:err_result().
 %%
 %% @doc Reports the Repo's working branch.
 %%
@@ -99,7 +100,7 @@ added_year(AppFile, Default) ->
 branch(Repo) ->
     version([branch], Repo).
 
--spec commit(Repo :: repo()) -> version() | brt:err_result().
+-spec commit(Repo :: repo()) -> version() | rrp:err_result().
 %%
 %% @doc Reports the Repo's latest commit.
 %%
@@ -115,7 +116,7 @@ commit(Repo) ->
     version([ref], Repo).
 
 -spec dirty(Repo :: repo())
-        -> false | {true, [string()]} | brt:err_result().
+        -> false | {true, [string()]} | rrp:err_result().
 %%
 %% @doc Reports whether there are uncommitted changes in Repo.
 %%
@@ -139,7 +140,7 @@ dirty(Repo) ->
             {error, lists:flatten([Repo, ": Not a Git repository"])}
     end.
 
--spec pull(Repo :: repo()) -> {ok, [string()]} | brt:err_result().
+-spec pull(Repo :: repo()) -> {ok, [string()]} | rrp:err_result().
 %%
 %% @doc Updates Repo from its default remote repository.
 %%
@@ -163,11 +164,11 @@ pull(Repo) ->
 -spec sync_upstream(
     Repo    :: repo(),
     Type    :: atom(),
-    URL     :: brt:dep_loc(),
+    URL     :: rrp:dep_loc(),
     Push    :: boolean(),
     UpBr    :: atom() | binary() | string(),
     SyncBr  :: atom() | binary() | string())
-        -> {ok, [string()]} | brt:err_result().
+        -> {ok, [string()]} | rrp:err_result().
 %%
 %% @doc Synchronizes branch SyncBr in Repo with branch UpBr at URL.
 %%
@@ -185,7 +186,7 @@ sync_upstream(Repo, git, URL, Push, UpBr, SyncBr) ->
                         true ->
                             PushCmd = [
                                 "push", "--set-upstream",
-                                "origin", brt:to_string(SyncBr)],
+                                "origin", rrp:to_string(SyncBr)],
                             case git_cmd(Repo, PushCmd, []) of
                                 {ok, PushOut} ->
                                     {ok, lists:reverse(PushOut ++ FetchOut)};
@@ -205,7 +206,7 @@ sync_upstream(_Repo, Type, URL, _Push, _UpBr, _SyncBr) ->
     {error, lists:flatten(io_lib:format(
          "Repository type '~s' of ~s not supported", [Type, URL])) }.
 
--spec tag(Repo :: repo()) -> version() | brt:err_result().
+-spec tag(Repo :: repo()) -> version() | rrp:err_result().
 %%
 %% @doc Reports the Repo's working tag.
 %%
@@ -221,7 +222,7 @@ tag(Repo) ->
     version([tag], Repo).
 
 
--spec version(Repo :: repo()) -> version() | brt:err_result().
+-spec version(Repo :: repo()) -> version() | rrp:err_result().
 %%
 %% @doc Reports the Repo's working version.
 %%
@@ -247,7 +248,7 @@ version(Repo) ->
 %% ===================================================================
 
 -spec version(Types :: [vsn_type()], Repo :: repo())
-        -> version() | brt:err_result().
+        -> version() | rrp:err_result().
 
 version(Types, Repo) ->
     case filelib:is_dir(filename:join(Repo, ".git")) of
@@ -258,7 +259,7 @@ version(Types, Repo) ->
     end.
 
 -spec repo_version(Types :: [vsn_type()], Repo :: repo())
-        -> version() | brt:err_result().
+        -> version() | rrp:err_result().
 
 repo_version([branch | Types], Repo) ->
     CmdOut = git_cmd(Repo, ["branch", "--list"], []),
@@ -323,7 +324,7 @@ repo_version([], _Repo) ->
         RunDir  :: dir(),
         ExeArgs :: [string()],
         ExeEnv  :: [{string(), string() | false}])
-        -> {ok, [string()]} | brt:err_result().
+        -> {ok, [string()]} | rrp:err_result().
 %
 % On success, output lines are returned in reverse order for efficiency!
 %   There's a method to my madness - on success, there's often only one line
@@ -373,7 +374,7 @@ git_cmd(RunDir, ExeArgs, ExeEnv) ->
     end.
 
 -spec find_git()
-        -> {ok | notgit | oldgit, brt:fs_path()} | brt:err_result().
+        -> {ok | notgit | oldgit, rrp:fs_path()} | rrp:err_result().
 find_git() ->
     case check_git(os:getenv("GIT")) of
         {ok, _} = Ret ->
@@ -383,7 +384,7 @@ find_git() ->
     end.
 
 -spec check_git(Exe :: term())
-        -> {ok | notgit | oldgit, brt:fs_path()} | brt:err_result().
+        -> {ok | notgit | oldgit, rrp:fs_path()} | rrp:err_result().
 check_git([_|_] = Exe) ->
     try
         Port = erlang:open_port({spawn_executable, Exe}, [
@@ -394,8 +395,8 @@ check_git([_|_] = Exe) ->
                 case re:run(VsnLine, "^git\\s+version\\s+(\\S+)\\b",
                         [{capture, all_but_first, list}]) of
                     {match, [VsnStr]} ->
-                        case brt:is_min_version(
-                                ?GIT_MIN_VSN, brt:parse_version(VsnStr)) of
+                        case rrp:is_min_version(
+                                ?GIT_MIN_VSN, rrp:parse_version(VsnStr)) of
                             true ->
                                 {ok, Exe};
                             _ ->
